@@ -1,16 +1,17 @@
 import yfinance as yf
 import streamlit as st
+import pandas as pd
 
+# Set title and description of the app
+st.title("Stock Price Analysis")
+st.write("A simple app to download and plot stock prices.")
 
-st.write("""
-# Financial App
-""")
+# Set up the search bar and date inputs
+search_term = st.text_input("Enter a stock ticker (e.g. AAPL):")
+start_date = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
+end_date = st.date_input("End date:", pd.Timestamp("2022-01-01"))
 
-stock = 'AMZN'
-
-get_stock_data = yf.Ticker(stock)
-
-ticket_df = get_stock_data.history(period='1d', start='2021-1-02', end='2021-12-12')
-
-st.line_chart(ticket_df.Close)
-st.line_chart(ticket_df.Volume)
+# Download the data and plot the close price
+if search_term:
+    data = yf.download(search_term, start=start_date, end=end_date)
+    st.line_chart(data["Close"])
