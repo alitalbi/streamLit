@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 
-st.set_page_config(page_title="DataFrame Demo", page_icon="📊")
+st.set_page_config(page_title="DataFrame Demo")
 
 st.markdown("# DataFrame Demo")
 st.sidebar.header("DataFrame Demo")
