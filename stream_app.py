@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 
-
+import sys
+sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 # Set title and description of the app
 st.title("Stock Price Analysis")
 st.write("A simple app to download and plot stock prices.")
