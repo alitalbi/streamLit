@@ -1,13 +1,15 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-
 import sys
-sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
-# Set title and description of the app
-st.title("Stock Price Analysis")
-st.write("A simple app to download and plot stock prices.")
 
+#sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
+
+st.set_page_config(page_title="Growth",page_icon="📈")
+# Set title and description of the app
+st.title("Growth")
+st.write("Talbi & Co Eco Framework (not ESG complaint) ")
+st.sidebar.header("Growth")
 # Set up the search bar and date inputs
 search_term = st.text_input("Enter a stock ticker (e.g. AAPL):")
 start_date = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
