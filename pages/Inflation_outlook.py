@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 import wget
 import yfinance as yf
 from datetime import datetime
+import os
 
 cwd = os.getcwd()
 st.set_page_config(page_title="Inflation Outlook",page_icon="📈")
