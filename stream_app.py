@@ -1,33 +1,22 @@
 import streamlit as st
-import time
-import numpy as np
+import pandas as pd
+import yfinance as yf
+import sys
 
-st.set_page_config(page_title="Plotting Demo", page_icon="📈")
+#sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 
-st.markdown("# Plotting Demo")
-st.sidebar.header("Plotting Demo")
-st.write(
-    """This demo illustrates a combination of plotting and animation with
-Streamlit. We're generating a bunch of random numbers in a loop for around
-5 seconds. Enjoy!"""
-)
+st.set_page_config(page_title="Growth",page_icon="📈")
+# Set title and description of the app
+st.title("Growth")
+st.write("Talbi & Co Eco Framework (not ESG complaint) ")
+st.sidebar.header("Growth")
+# Set up the search bar and date inputs
+search_term = st.text_input("Enter a stock ticker (e.g. AAPL):")
+start_date = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
+end_date = st.date_input("End date:", pd.Timestamp("2022-01-01"))
+print(start_date)
 
-progress_bar = st.sidebar.progress(0)
-status_text = st.sidebar.empty()
-last_rows = np.random.randn(1, 1)
-chart = st.line_chart(last_rows)
-
-for i in range(1, 101):
-    new_rows = last_rows[-1, :] + np.random.randn(5, 1).cumsum(axis=0)
-    status_text.text("%i%% Complete" % i)
-    chart.add_rows(new_rows)
-    progress_bar.progress(i)
-    last_rows = new_rows
-    time.sleep(0.05)
-
-progress_bar.empty()
-
-# Streamlit widgets automatically run the script from top to bottom. Since
-# this button is not connected to any other logic, it just causes a plain
-# rerun.
-st.button("Re-run")
+# Download the data and plot the close price
+if search_term:
+    data = yf.download(search_term, start=start_date, end=end_date)
+    st.line_chart(data["Close"])
