@@ -123,12 +123,12 @@ shelter_prices, shelter_prices_10 = smooth_data("CUSR0000SAH1", date_start, date
 shelter_prices = shelter_prices[["_6m_smoothing_growth"]] - cpi[["_6m_smoothing_growth"]]
 shelter_prices_10 = shelter_prices_10[['10 yr average']] - cpi_10[['10 yr average']]
 
-wget.download("http://atlantafed.org/-/media/documents/datafiles/chcs/wage-growth-tracker/wage-growth-data.xlsx")
+"""wget.download("http://atlantafed.org/-/media/documents/datafiles/chcs/wage-growth-tracker/wage-growth-data.xlsx")
 wage_tracker = pd.DataFrame(pd.read_excel(cwd + "/wage-growth-data.xlsx").iloc[3:, [0, 11]])
 wage_tracker.columns = ['date', "wage_tracker"]
 wage_tracker.set_index('date', inplace=True)
-
-employment_level_wage_tracker = pd.concat([employment_level, wage_tracker], axis=1)
+"""
+employment_level_wage_tracker = pd.concat([employment_level], axis=1)
 employment_level_wage_tracker.dropna(inplace=True)
 wages, wages_10 = smooth_data("CES0500000003", date_start, date_start2, date_end)
 wages = wages[["_6m_smoothing_growth"]] - cpi[["_6m_smoothing_growth"]]
@@ -153,7 +153,7 @@ score_table_merged_infla = pd.concat([score_table("Gas", gas, gas10),
 score_table_merged_infla = score_table_merged_infla.iloc[:, [4, 0, 1, 2, 3]]
 # score_table_merged.set_index("index", inplace=True)
 
-print(dropdown)
+
 
 fig_secular_trends = make_subplots(rows=3, cols=2, specs=[[{"secondary_y": True}, {"secondary_y": True}],
                                                           [{"secondary_y": True}, {"secondary_y": True}],
