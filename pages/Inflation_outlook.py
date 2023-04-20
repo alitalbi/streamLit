@@ -294,5 +294,5 @@ fig_secular_trends.layout.xaxis4.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis5.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis6.range = [date_start, date_end]
 
-st.plotly_chart(fig_secular_trends, use_container_width=True)
 st.plotly_chart(fig_secular_trends_2, use_container_width=True)
+st.plotly_chart(fig_secular_trends, use_container_width=True)
