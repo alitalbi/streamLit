@@ -123,11 +123,7 @@ shelter_prices, shelter_prices_10 = smooth_data("CUSR0000SAH1", date_start, date
 shelter_prices = shelter_prices[["_6m_smoothing_growth"]] - cpi[["_6m_smoothing_growth"]]
 shelter_prices_10 = shelter_prices_10[['10 yr average']] - cpi_10[['10 yr average']]
 
-"""wget.download("http://atlantafed.org/-/media/documents/datafiles/chcs/wage-growth-tracker/wage-growth-data.xlsx")
-wage_tracker = pd.DataFrame(pd.read_excel(cwd + "/wage-growth-data.xlsx").iloc[3:, [0, 11]])
-wage_tracker.columns = ['date', "wage_tracker"]
-wage_tracker.set_index('date', inplace=True)
-"""
+
 employment_level_wage_tracker = pd.concat([employment_level], axis=1)
 employment_level_wage_tracker.dropna(inplace=True)
 wages, wages_10 = smooth_data("CES0500000003", date_start, date_start2, date_end)
@@ -211,10 +207,7 @@ fig_secular_trends.add_trace(
                name="Employment level 6m annualized growth",
                mode="lines", line=dict(width=2, color='white'), showlegend=True), secondary_y=False, row=3,
     col=2)
-fig_secular_trends.add_trace(
-    go.Scatter(x=employment_level_wage_tracker.index.to_list(), y=employment_level_wage_tracker.wage_tracker,
-               name="Atlanta Fed wage tracker",
-               mode="lines", line=dict(width=2, color='blue'), showlegend=True), secondary_y=True, row=3, col=2)
+
 fig_secular_trends.update_layout(template="plotly_dark",
                                  height=1000, width=1500)
 fig_secular_trends.update_layout(  # customize font and legend orientation & position
@@ -282,10 +275,6 @@ fig_secular_trends_2.update_layout(  # customize font and legend orientation & p
     )
 )
 fig_secular_trends_2.update_layout(height=650, width=1500)
-try:
-    date_start = date_start[:3] + str(int(date_start[3]) + 1) + date_start[4:]
-except ValueError:
-    pass
 
 
 fig_secular_trends_2.layout.xaxis.range = [date_start, date_end]
