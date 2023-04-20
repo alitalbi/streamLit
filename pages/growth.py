@@ -112,7 +112,7 @@ composite_growth_10 = pd.concat(
 composite_growth_10.dropna(inplace=True)
 composite_growth_10 = pd.DataFrame(composite_growth_10.mean(axis=1))
 composite_growth_10.columns = ["10 yr average"]
-composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
+#composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
 fig_ = go.Figure()
 
 
