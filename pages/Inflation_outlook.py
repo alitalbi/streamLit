@@ -234,7 +234,7 @@ fig_secular_trends.layout.yaxis9.tickformat = ".2%"
 fig_secular_trends.layout.yaxis10.tickformat = ".2%"
 fig_secular_trends_2 = make_subplots(rows=2, cols=2)
 
-fig_secular_trends_2.add_trace(go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:,0], name="Wheat Close Price",
+fig_secular_trends_2.add_trace(go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:,1], name="Wheat Close Price",
                                           mode="lines", line=dict(width=2, color='white')), row=1, col=1)
 fig_secular_trends_2.add_trace(
     go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:, 0], name="Wheat 100 MA",
@@ -283,10 +283,7 @@ fig_secular_trends_2.layout.xaxis2.range = [date_start, date_end]
 fig_secular_trends_2.layout.xaxis3.range = [date_start, date_end]
 fig_secular_trends_2.layout.xaxis4.range = [date_start, date_end]
 
-fig_secular_trends_2.layout.yaxis.tickformat = ".2%"
-fig_secular_trends_2.layout.yaxis2.tickformat = ".2%"
-fig_secular_trends_2.layout.yaxis3.tickformat = ".2%"
-fig_secular_trends_2.layout.yaxis4.tickformat = ".2%"
+
 
 fig_secular_trends.layout.xaxis.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis2.range = [date_start, date_end]
