@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime,timedelta
 
 st.set_page_config(page_title="growth")
+
 st.set_theme('dark')
 
 frequency = "monthly"

@@ -13,7 +13,17 @@ st.set_page_config(page_title="Inflation Outlook",page_icon="📈")
 st.set_theme('dark')
 
 # Set title and description of the app
-st.markdown("Inflation Outlook ")
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #0c0c0d;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 st.sidebar.header("Inflation Outlook ")
 
 frequency = "monthly"
