@@ -160,7 +160,7 @@ fig_secular_trends = make_subplots(rows=3, cols=2, specs=[[{"secondary_y": True}
                                                           [{"secondary_y": True}, {"secondary_y": True}]],
                                    subplot_titles=["CPI", "Core CPI"
                                        , "PCE", "Core PCE", "Shelter Prices",
-                                                   "Employment (Growth) and Wage tracker levels"])
+                                                   "Employment (Growth)"])
 
 fig_secular_trends.add_trace(
     go.Scatter(x=cpi.index.to_list(), y=cpi._6m_smoothing_growth/100, name="6m growth average",
