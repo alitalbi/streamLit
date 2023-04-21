@@ -234,28 +234,28 @@ fig_secular_trends.layout.yaxis9.tickformat = ".2%"
 fig_secular_trends.layout.yaxis10.tickformat = ".2%"
 fig_secular_trends_2 = make_subplots(rows=2, cols=2)
 
-fig_secular_trends_2.add_trace(go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:,1], name="Wheat Close Price",
-                                          mode="lines", line=dict(width=2, color='white')), row=1, col=1)
+fig_secular_trends_2.add_trace(go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:,1], name="Wheat",
+                                          mode="lines", line=dict(width=2, color='white'), showlegend=True), row=1, col=1)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:, 0], name="Wheat 100 MA",
+    go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:, 0], name="100 MA",
                mode="lines", line=dict(width=2, color='green'),showlegend=True), row=1, col=1)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=cooper_prices.index.to_list(), y=cooper_prices.iloc[:,1], name="Cooper Close Price",
-               mode="lines", line=dict(width=2, color='orange')), row=1, col=2)
+    go.Scatter(x=cooper_prices.index.to_list(), y=cooper_prices.iloc[:,1], name="Cooper",
+               mode="lines", line=dict(width=2, color='orange'), showlegend=True), row=1, col=2)
 fig_secular_trends_2.add_trace(
     go.Scatter(x=cooper_prices.index.to_list(), y=cooper_prices.iloc[:, 0], name="Cooper 100MA",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), row=1, col=2)
-fig_secular_trends_2.add_trace(go.Scatter(x=gas.index.to_list(), y=gas.iloc[:,1], name="Gas Close Price",
-                                          mode="lines", line=dict(width=2, color='purple')), row=2, col=1)
+fig_secular_trends_2.add_trace(go.Scatter(x=gas.index.to_list(), y=gas.iloc[:,1], name="Gas",
+                                          mode="lines", line=dict(width=2, color='purple'), showlegend=True), row=2, col=1)
 fig_secular_trends_2.add_trace(
     go.Scatter(x=gas.index.to_list(), y=gas.iloc[:, 0],name = "Gas 100 MA",
-               mode="lines", line=dict(width=2, color='green'), showlegend=True), row=2, col=1)
+               mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=1)
 
 fig_secular_trends_2.add_trace(go.Scatter(x=oil.index.to_list(), y=oil.iloc[:,0], name="Oil 100 MA",
-                                          mode="lines", line=dict(width=2, color='blue'), showlegend=False), row=2, col=2)
+                                          mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=2)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=oil.index.to_list(), y=oil.iloc[:, 1],
-               mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=2)
+    go.Scatter(x=oil.index.to_list(), y=oil.iloc[:, 1],name = "Oil",
+               mode="lines", line=dict(width=2, color='blue'), showlegend=True), row=2, col=2)
 
 fig_secular_trends_2.update_layout(
     template="plotly_dark",
