@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-from datetime import datetime
+from datetime import datetime,timedelta
 
 st.set_page_config(page_title="growth")
 
@@ -40,6 +40,8 @@ def filter_color(val):
         return 'background-color: rgba(138, 255,0, 1)'
 
 def smooth_data(internal_ticker, date_start, date_start2, date_end):
+    date_start= (date_start.strptime(date_start,"%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
+
     data_ = pd.DataFrame(
         fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
 
@@ -66,6 +68,7 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
     data_2['10 yr average'] = data_2['mom_average'].rolling(120).mean()
     data_.dropna(inplace=True)
     data_2.dropna(inplace=True)
+    print(data_)
     return data_[['_6m_smoothing_growth']], data_2[['10 yr average']]
 
 
