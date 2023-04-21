@@ -252,7 +252,7 @@ fig_secular_trends_2.add_trace(go.Scatter(x=gas.index.to_list(), y=gas.iloc[:,0]
                                           mode="lines", line=dict(width=2, color='purple')), row=2, col=1)
 fig_secular_trends_2.add_trace(
     go.Scatter(x=gas10.index.to_list(), y=gas10.iloc[:, 1],name = "Gas 100 MA",
-               mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=1)
+               mode="lines", line=dict(width=2, color='green'), showlegend=True), row=2, col=1)
 
 fig_secular_trends_2.add_trace(go.Scatter(x=oil.index.to_list(), y=oil.iloc[:,1], name="Oil 100 MA",
                                           mode="lines", line=dict(width=2, color='blue'), showlegend=False), row=2, col=2)
