@@ -84,13 +84,13 @@ def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
 
     # creating 6m smoothing growth column and 10yr average column
     # Calculate the smoothed average
-    data_["average"] = data_.rolling(14).mean()
+    data_["average"] = data_.rolling(22).mean()
     # average = data_.iloc[:, 0].rolling(22).mean()
-    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 14) - 1) * 100
+    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 22) - 1) * 100
 
 
 
-    data_["growth_daily"] = data_["Close"].pct_change(periods=1)
+    data_["growth_daily"] = data_["Close"].pct_change(periods=5)
 
 
     data_.dropna(inplace=True)
