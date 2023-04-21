@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import sys
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 
 #sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 
@@ -19,4 +22,9 @@ print(start_date)
 # Download the data and plot the close price
 if search_term:
     data = yf.download(search_term, start=start_date, end=end_date)
-    st.line_chart(data["Close"])
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data.index.to_list(), y=data.Close / 100,
+                          name=search_term+ " Close Price",
+                          mode="lines", line=dict(width=2)))
+    st.plotly_chart(fig, use_container_width=True)
