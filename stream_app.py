@@ -9,7 +9,6 @@ from datetime import datetime
 #sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 
 st.set_page_config(page_title="yahoo finance search",page_icon="📈")
-st.set_theme('dark')
 
 # Set title and description of the app
 st.title("Yahoo Finance search")
