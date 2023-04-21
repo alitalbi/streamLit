@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 
 st.set_page_config(page_title="yahoo finance search",page_icon="📈")
 # Set title and description of the app
-st.title("Close price from yahoo finance ")
+st.title("Yahoo Finance stock search")
 st.write("Talbi & Co Eco Framework (not ESG complaint) ")
 st.sidebar.header("Yahoo Finance Stock search")
 # Set up the search bar and date inputs
