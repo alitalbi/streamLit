@@ -12,7 +12,7 @@ st.set_page_config(page_title="growth")
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
-date_start = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
+date_start = st.date_input("Start date:", pd.Timestamp("2021-01-01"))
 print(type(date_start))
 date_start2 = datetime.strptime("2004-01-01","%Y-%m-%d").date()
 print(type(date_start2))

@@ -17,7 +17,7 @@ st.sidebar.header("Inflation Outlook ")
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
-date_start_ = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
+date_start_ = st.date_input("Start date:", pd.Timestamp("2021-01-01"))
 
 date_start2_ = datetime.strptime("2004-01-01","%Y-%m-%d").date()
 date_end_ = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))

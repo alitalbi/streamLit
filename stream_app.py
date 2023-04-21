@@ -15,7 +15,7 @@ st.write("Talbi & Co Eco Framework (not ESG complaint) ")
 st.sidebar.header("Yahoo Finance Price search")
 # Set up the search bar and date inputs
 search_term = st.text_input("Enter a ticker (e.g. AAPL):")
-start_date = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
+start_date = st.date_input("Start date:", pd.Timestamp("2021-01-01"))
 end_date = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))
 print(start_date)
 
