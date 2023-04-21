@@ -20,7 +20,7 @@ fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 date_start_ = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
 
 date_start2_ = datetime.strptime("2004-01-01","%Y-%m-%d").date()
-dat_end_ = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))
+date_end_ = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))
 
 
 def score_table(index, data_, data_10):
