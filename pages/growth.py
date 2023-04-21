@@ -40,8 +40,8 @@ def filter_color(val):
         return 'background-color: rgba(138, 255,0, 1)'
 
 def smooth_data(internal_ticker, date_start, date_start2, date_end):
-    date_start= (date_start.strptime(date_start,"%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
-
+    date_start= (datetime.strptime(date_start,"%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
+    print(date_start)
     data_ = pd.DataFrame(
         fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
 

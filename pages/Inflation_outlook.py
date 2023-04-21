@@ -44,6 +44,8 @@ def filter_color(val):
     elif val == 3:
         return 'background-color: rgba(138, 255,0, 1)'
 def smooth_data(internal_ticker, date_start, date_start2, date_end):
+    date_start = (datetime.strptime(date_start, "%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
+
     data_ = pd.DataFrame(
         fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
 
@@ -73,6 +75,8 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
     return data_[['_6m_smoothing_growth']], data_2[['10 yr average']]
 
 def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
+    date_start = (datetime.strptime(date_start, "%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
+
     data_ = yf.download(internal_ticker, start=date_start, end=date_end, interval="1d")[['Close']]
 
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
