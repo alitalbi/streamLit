@@ -9,8 +9,19 @@ from datetime import datetime,timedelta
 import os
 
 cwd = os.getcwd()
-st.set_page_config(page_title="Inflation Outlook",page_icon="📈",theme="dark")
-
+st.set_page_config(page_title="Inflation Outlook",page_icon="📈")
+# Add custom CSS to the app using st.markdown()
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #1F2227;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Set title and description of the app
 st.markdown("Inflation Outlook ")
