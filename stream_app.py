@@ -7,6 +7,8 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 
 #sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
+st.set_page_config(page_title="yahoo finance search",page_icon="📈")
+
 st.markdown(
     """
     <style>
@@ -19,7 +21,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.set_page_config(page_title="yahoo finance search",page_icon="📈")
 
 
 # Set title and description of the app
