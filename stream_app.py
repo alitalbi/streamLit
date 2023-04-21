@@ -68,8 +68,8 @@ transactions_coupons_2022 = import_data(url_transactions_coupons_2022)
 transactions_IDB_2015 = import_data(url_transactions_IDB_2015)
 transactions_IDB_2022 = import_data(url_transactions_IDB_2022)
 
-transactions_others_2015 = import_data(url_transactions_IDB_2015)
-transactions_others_2022 = import_data(url_transactions_IDB_2022)
+transactions_others_2015 = import_data(url_transactions_others_2015)
+transactions_others_2022 = import_data(url_transactions_others_2022)
 
 #dfs
 
@@ -92,7 +92,8 @@ transactions_coupons_df = pd.concat([transactions_coupons_2015,transactions_coup
 transactions_IDB_df = pd.concat([transactions_IDB_2015,transactions_IDB_2022])
 transactions_others_df = pd.concat([transactions_others_2015,transactions_others_2022])
 
-transactions_cpty_df = pd.concat([transactions_IDB_df,transactions_others_df],axis=0)
+transactions_cpty_df = pd.concat([transactions_IDB_df,transactions_others_df],axis=1)
+transactions_cpty_df.columns = ['Inter-Dealer Brokers','Others']
 print(transactions_cpty_df)
 st.title("Net Positions")
 # Create two columns
