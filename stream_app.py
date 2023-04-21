@@ -96,6 +96,7 @@ print("2222",transactions_IDB_df,transactions_others_df)
 #print(transactions_cpty_df)
 #transactions_cpty_df.columns = ['Inter-Dealer Brokers','Others']
 #print(transactions_cpty_df)
+st.title(" Primary Dealer Statistics from the FED of New York ")
 st.title("Net Positions")
 # Create two columns
 col1, col2 = st.columns(2)
