@@ -91,10 +91,11 @@ transactions_coupons_df = pd.concat([transactions_coupons_2015,transactions_coup
 
 transactions_IDB_df = pd.concat([transactions_IDB_2015,transactions_IDB_2022])
 transactions_others_df = pd.concat([transactions_others_2015,transactions_others_2022])
-
-transactions_cpty_df = pd.concat([transactions_IDB_df,transactions_others_df],axis=1)
-transactions_cpty_df.columns = ['Inter-Dealer Brokers','Others']
-print(transactions_cpty_df)
+print("2222",transactions_IDB_df,transactions_others_df)
+#transactions_cpty_df = pd.concat([transactions_IDB_df,transactions_others_df],axis=1)
+#print(transactions_cpty_df)
+#transactions_cpty_df.columns = ['Inter-Dealer Brokers','Others']
+#print(transactions_cpty_df)
 st.title("Net Positions")
 # Create two columns
 col1, col2 = st.columns(2)
@@ -218,18 +219,30 @@ option_tcpty = col2_.selectbox('By Counterparty', ['Inter-Dealer Brokers & Other
 if option_tcpty == "Inter-Dealer Brokers & Others":
     with col2_:
         fig_coupons = go.Figure()
-        fig_coupons.add_trace(go.Scatter(x=transactions_cpty_df.index.to_list(), y=transactions_cpty_df.iloc[:, 0],
-                                         mode="lines", line=dict(width=2),name="Inter-Dealer Brokers",showlegend=True))
-        fig_coupons.add_trace(go.Scatter(x=transactions_cpty_df.index.to_list(), y=transactions_cpty_df.iloc[:, 1],
-                                         mode="lines", line=dict(width=2),name="Others",showlegend=True))
+
+        fig_coupons.add_trace(go.Scatter(x=transactions_IDB_df.index.to_list(), y=transactions_IDB_df.iloc[:, 0],
+                                         mode="lines", line=dict(width=2), name="Inter-Dealer Brokers",
+                                         showlegend=True))
+
+        fig_coupons.add_trace(go.Scatter(x=transactions_others_df.index.to_list(), y=transactions_others_df.iloc[:, 0],
+                                         mode="lines", line=dict(width=2), name="Others", showlegend=True,
+                                         yaxis="y2"))  # Add second y-axis
+
         fig_coupons.update_layout(
             template="plotly_dark",
+            legend=dict(
+                title=None, orientation="h", y=0.97, yanchor="bottom", x=0.5, xanchor="center"
+            ),
             title={
                 'text': "Inter-Dealer Brokers & Others (in millions)",
                 'y': 0.9,
                 'x': 0.5,
                 'xanchor': 'center',
-                'yanchor': 'top'})
+                'yanchor': 'top'},
+            yaxis=dict(title="Inter-Dealer Brokers"),
+            yaxis2=dict(title="Others", side="right", overlaying="y")  # Add second y-axis configuration
+        )
+
         st.plotly_chart(fig_coupons, use_container_width=True)
 
 
