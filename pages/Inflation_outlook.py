@@ -10,6 +10,8 @@ import os
 
 cwd = os.getcwd()
 st.set_page_config(page_title="Inflation Outlook",page_icon="📈")
+st.set_theme('dark')
+
 # Set title and description of the app
 st.markdown("Inflation Outlook ")
 st.sidebar.header("Inflation Outlook ")
