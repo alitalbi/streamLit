@@ -16,7 +16,7 @@ date_start = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
 print(type(date_start))
 date_start2 = datetime.strptime("2004-01-01","%Y-%m-%d").date()
 print(type(date_start2))
-end_date = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))
+date_end = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))
 
 def score_table(index, data_, data_10):
     score_table = pd.DataFrame.from_dict({"trend vs history ": 1 if data_.iloc[-1, 0] > data_10.iloc[-1, 0] else 0,
