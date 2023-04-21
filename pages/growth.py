@@ -28,6 +28,15 @@ def score_table(index, data_, data_10):
 
     return score_table
 
+def filter_color(val):
+    if val == 0:
+        return 'backgroundColor: rgba(255, 36, 71, 1)'
+    elif val == 1:
+        return 'backgroundColor: rgba(255, 36, 71, 0.4)'
+    elif val == 2:
+        return 'backgroundColor: rgba(53, 108, 0, 1)'
+    elif val == 3:
+        return 'backgroundColor: rgba(138, 255,0, 1)'
 
 def smooth_data(internal_ticker, date_start, date_start2, date_end):
     data_ = pd.DataFrame(
@@ -246,6 +255,6 @@ score_table_merged = pd.concat(
      score_table("COMPOSITE GROWTH", composite_growth, composite_growth_10)], axis=0)
 score_table_merged = score_table_merged.iloc[:, [4, 0, 1, 2, 3]]
 
-st.table(score_table_merged)
+st.table(score_table_merged.style.applymap(filter_color,subset='Score'))
 st.plotly_chart(fig_, use_container_width=True)
 st.plotly_chart(fig_cyclical_trends, use_container_width=True)
