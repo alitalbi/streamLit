@@ -255,6 +255,6 @@ score_table_merged = pd.concat(
      score_table("COMPOSITE GROWTH", composite_growth, composite_growth_10)], axis=0)
 score_table_merged = score_table_merged.iloc[:, [4, 0, 1, 2, 3]]
 
-st.table(score_table_merged.style.applymap(filter_color,subset='Score'))
+st.table(score_table_merged.style.applymap(filter_color,subset=['Score']))
 st.plotly_chart(fig_, use_container_width=True)
 st.plotly_chart(fig_cyclical_trends, use_container_width=True)
