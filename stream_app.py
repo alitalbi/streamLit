@@ -5,11 +5,11 @@ import sys
 
 #sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 
-st.set_page_config(page_title="Growth",page_icon="📈")
+st.set_page_config(page_title="yahoo finance search",page_icon="📈")
 # Set title and description of the app
-st.title("Growth")
+st.title("Close price from yahoo finance ")
 st.write("Talbi & Co Eco Framework (not ESG complaint) ")
-st.sidebar.header("Growth")
+st.sidebar.header("Yahoo Finance Stock search")
 # Set up the search bar and date inputs
 search_term = st.text_input("Enter a stock ticker (e.g. AAPL):")
 start_date = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
