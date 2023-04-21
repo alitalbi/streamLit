@@ -155,6 +155,7 @@ score_table_merged_infla = pd.concat([score_table("Gas", gas, gas10),
                                       score_table("Shelter Prices", shelter_prices, shelter_prices_10)], axis=0)
 
 score_table_merged_infla = score_table_merged_infla.iloc[:, [4, 0, 1, 2, 3]]
+score_table_merged_infla.reset_index(drop=True,inplace=True)
 # score_table_merged.set_index("index", inplace=True)
 
 
@@ -301,6 +302,8 @@ fig_secular_trends.layout.xaxis3.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis4.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis5.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis6.range = [date_start, date_end]
+
+
 
 st.table(score_table_merged_infla.style.applymap(filter_color,subset=['Score']))
 st.plotly_chart(fig_secular_trends_2, use_container_width=True)
