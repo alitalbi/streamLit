@@ -84,18 +84,18 @@ def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
 
     # creating 6m smoothing growth column and 10yr average column
     # Calculate the smoothed average
-    data_["average"] = data_.rolling(22).mean()
+    data_["average"] = data_.rolling(66).mean()
     # average = data_.iloc[:, 0].rolling(22).mean()
-    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 22) - 1) * 100
-
-
+    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 66) - 1) * 100
+    data_["28d_ma"] = data_["Close"].rolling(28).mean()
+    data_["100d_ma"] = data_["Close"].rolling(100).mean()
 
     data_["growth_daily"] = data_["Close"].pct_change(periods=5)
 
 
     data_.dropna(inplace=True)
    # data_2.dropna(inplace=True)
-    return data_[['14d_growth_rate']], data_[['growth_daily']]
+    return data_[['28d_ma']], data_["100d_ma"],data_[['Close']]
 
 date_start = date_start_.strftime("%Y-%m-%d")
 date_start2 = date_start2_.strftime("%Y-%m-%d")
@@ -237,27 +237,27 @@ fig_secular_trends.layout.yaxis9.tickformat = ".2%"
 fig_secular_trends.layout.yaxis10.tickformat = ".2%"
 fig_secular_trends_2 = make_subplots(rows=2, cols=2)
 
-fig_secular_trends_2.add_trace(go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:,0]/100, name="Wheat 6m annualized growth",
+fig_secular_trends_2.add_trace(go.Scatter(x=wheat.index.to_list(), y=wheat.iloc[:,2], name="Wheat Close Price",
                                           mode="lines", line=dict(width=2, color='white')), row=1, col=1)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=wheat10.index.to_list(), y=wheat10.iloc[:, 0]/100, name="10 YR average growth rate",
+    go.Scatter(x=wheat10.index.to_list(), y=wheat10.iloc[:, 1], name="Wheat 100 MA",
                mode="lines", line=dict(width=2, color='green'),showlegend=True), row=1, col=1)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=cooper_prices.index.to_list(), y=cooper_prices.iloc[:,0]/100, name="Cooper 6m annualized growth",
+    go.Scatter(x=cooper_prices.index.to_list(), y=cooper_prices.iloc[:,2], name="Cooper Close Price",
                mode="lines", line=dict(width=2, color='orange')), row=1, col=2)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=cooper_prices10.index.to_list(), y=cooper_prices10.iloc[:, 0]/100, name="Cooper 10YR average growth rate",
+    go.Scatter(x=cooper_prices10.index.to_list(), y=cooper_prices10.iloc[:, 1]/100, name="Cooper 100MA",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), row=1, col=2)
 fig_secular_trends_2.add_trace(go.Scatter(x=gas.index.to_list(), y=gas.iloc[:,0]/100, name="Gas 6m annualized growth",
                                           mode="lines", line=dict(width=2, color='purple')), row=2, col=1)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=gas10.index.to_list(), y=gas10.iloc[:, 0]/100,
+    go.Scatter(x=gas10.index.to_list(), y=gas10.iloc[:, 1],name = "Gas 100 MA",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=1)
 
-fig_secular_trends_2.add_trace(go.Scatter(x=oil.index.to_list(), y=oil.iloc[:,0]/100, name="Oil 6m annualized growth",
+fig_secular_trends_2.add_trace(go.Scatter(x=oil.index.to_list(), y=oil.iloc[:,1], name="Oil 100 MA",
                                           mode="lines", line=dict(width=2, color='blue'), showlegend=False), row=2, col=2)
 fig_secular_trends_2.add_trace(
-    go.Scatter(x=oil10.index.to_list(), y=oil10.iloc[:, 0]/100,
+    go.Scatter(x=oil10.index.to_list(), y=oil10.iloc[:, 2],
                mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=2)
 
 fig_secular_trends_2.update_layout(
