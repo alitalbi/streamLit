@@ -139,11 +139,8 @@ core_pce, core_pce_10 = smooth_data("DPCCRC1M027SBEA", date_start, date_start2, 
 shelter_title = "Shelter Prices"
 wages_title = " Fred Wages"
 
-score_table_merged_infla = pd.concat([score_table("Gas", gas, gas10),
-                                      score_table("Oil", oil, oil10),
-                                      score_table("Wheat", wheat, wheat10),
-                                      score_table("Cooper", cooper_prices, cooper_prices10),
-                                        score_table("CPI", cpi, cpi_10),
+score_table_merged_infla = pd.concat([
+                                      score_table("CPI", cpi, cpi_10),
                                       score_table("Core CPI", core_cpi, core_cpi_10),
                                       score_table("PCE", pcec96, pcec96_10),
                                       score_table("Core PCE", core_pce, core_pce_10),
