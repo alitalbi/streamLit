@@ -13,7 +13,6 @@ st.set_page_config(page_title="Inflation Outlook",page_icon="📈")
 # Set title and description of the app
 st.markdown("Inflation Outlook ")
 st.sidebar.header("Inflation Outlook ")
-st.write("Inflation Outlook ")
 
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
@@ -35,7 +34,16 @@ def score_table(index, data_, data_10):
 
     return score_table
 
-
+def filter_color(val):
+    print(val, type(val))
+    if val == 0:
+        return 'background-color: rgba(255, 36, 71, 1)'
+    elif val == 1:
+        return 'background-color: rgba(255, 36, 71, 0.4)'
+    elif val == 2:
+        return 'background-color: rgba(53, 108, 0, 1)'
+    elif val == 3:
+        return 'background-color: rgba(138, 255,0, 1)'
 def smooth_data(internal_ticker, date_start, date_start2, date_end):
     data_ = pd.DataFrame(
         fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
@@ -294,6 +302,6 @@ fig_secular_trends.layout.xaxis4.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis5.range = [date_start, date_end]
 fig_secular_trends.layout.xaxis6.range = [date_start, date_end]
 
-st.table(score_table_merged_infla)
+st.table(score_table_merged_infla.style.applymap(filter_color,subset=['Score']))
 st.plotly_chart(fig_secular_trends_2, use_container_width=True)
 st.plotly_chart(fig_secular_trends, use_container_width=True)
