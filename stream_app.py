@@ -4,7 +4,7 @@ import yfinance as yf
 import sys
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
+from datetime import datetime
 
 #sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 
@@ -16,7 +16,7 @@ st.sidebar.header("Yahoo Finance Price search")
 # Set up the search bar and date inputs
 search_term = st.text_input("Enter a ticker (e.g. AAPL):")
 start_date = st.date_input("Start date:", pd.Timestamp("2015-01-01"))
-end_date = st.date_input("End date:", pd.Timestamp("2022-01-01"))
+end_date = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%M-%d")))
 print(start_date)
 
 # Download the data and plot the close price
