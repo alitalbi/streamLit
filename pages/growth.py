@@ -8,7 +8,17 @@ from plotly.subplots import make_subplots
 from datetime import datetime,timedelta
 
 st.set_page_config(page_title="growth")
-
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #0c0c0d;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
