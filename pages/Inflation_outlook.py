@@ -81,26 +81,21 @@ def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
 
     #data_2 = yf.download(internal_ticker, start=date_start2, end=date_end, interval="1d")[['Close']]
 
-    #data_2 = data_2.loc[(data_2.index > date_start2) & (data_2.index < date_end)]
-    #data_2.index = pd.to_datetime(data_2.index)
+
     # creating 6m smoothing growth column and 10yr average column
     # Calculate the smoothed average
-    data_["average"] = data_.rolling(6).mean()
+    data_["average"] = data_.rolling(14).mean()
     # average = data_.iloc[:, 0].rolling(22).mean()
-    data_["30d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (12 / 6) - 1) * 100
+    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 14) - 1) * 100
 
-    data_['mean_30d_growth'] = data_["30d_growth_rate"].rolling(6).mean()
-    # data_["growth_daily"] = data_['Close'].pct_change(periods=1)
-    data_["growth_daily"] = data_["30d_growth_rate"].rolling(66).mean()
-    # average = data_.iloc[:, 0].rolling(22).mean()
-    # data_2["3m_growth_rate"] = ((data_2["Close"] / data_2["shifted"]) ** (66 / 264) - 1) * 100
-    # data_2["3m_growth_rate"] = data_2["3m_growth_rate"].rolling(66).mean()
-    # Multiply the result by 100 and store it in the _6m_smoothing_growth column
-    # data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+
+
+    data_["growth_daily"] = data_["Close"].pct_change(periods=1)
+
 
     data_.dropna(inplace=True)
    # data_2.dropna(inplace=True)
-    return data_[['30d_growth_rate']], data_[['growth_daily']]
+    return data_[['14d_growth_rate']], data_[['growth_daily']]
 
 date_start = date_start_.strftime("%Y-%m-%d")
 date_start2 = date_start2_.strftime("%Y-%m-%d")
