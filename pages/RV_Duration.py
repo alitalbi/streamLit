@@ -34,6 +34,19 @@ def quantiles_(data):
         return 4
     else:
         return 5
+
+
+def filter_color(val):
+    if val == 1:
+        return 'background-color: rgba( 124, 252, 0, 1 )'
+    elif val == 2:
+        return 'background-color: rgba( 152, 251, 152, 1 )'
+    elif val == 3:
+        return 'background-color: rgba( 255, 245, 238, 1 )'
+    elif val == 4:
+        return 'background-color: rgba( 240, 128, 128, 1 )'
+    elif val == 5:
+        return 'background-color: rgba( 220, 20, 60, 1 )'
 #Citi Surprise Index
 US_citi_surprise_index = pd.read_csv("https://raw.githubusercontent.com/alitalbi/streamLit/master/data/EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 #EU_citi_surprise_index = pd.read_csv(path + "EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
@@ -90,4 +103,9 @@ zscore_carry = stats.zscore(carry)
 
 #list quantiles strategies
 list_q_strategies = map(quantiles_,[zscore_citi_surprise,zscore_momentum_10y,z_score_momentum_SP,zscore_FV,zscore_carry])
-print(pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry"],"US":list_q_strategies}))
+
+score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry"],"US":list_q_strategies})
+st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
+#st.plotly_chart(fig_, use_container_width=True)
+
+
