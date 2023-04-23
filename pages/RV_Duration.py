@@ -17,6 +17,8 @@ fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
 date_start = "2010-01-01"
 date_end = datetime.now().strftime("%Y-%m-%d")
+
+st.title("A framework for RV in duration")
 def quantiles_(data):
     # Compute the 5 quantiles
     quantiles = np.percentile(data, [0, 25, 50, 75, 100])
