@@ -42,7 +42,7 @@ def filter_color(val):
     elif val == 2:
         return 'background-color: rgba( 152, 251, 152, 1 )'
     elif val == 3:
-        return 'background-color: rgba( 255, 245, 238, 1 )'
+        pass
     elif val == 4:
         return 'background-color: rgba( 240, 128, 128, 1 )'
     elif val == 5:
