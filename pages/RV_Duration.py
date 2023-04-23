@@ -59,6 +59,7 @@ zscore_citi_surprise = stats.zscore(US_citi_surprise_index)
 #Bond Momentum : 1M change in 10Y future contract
 
 #US_10Y = pd.read_csv(path + "US 10 Year T-Note Futures Historical Data.csv",index_col=["Date"])['Price'][::-1].apply(lambda x:float(x.replace(",",".")))
+US_10Y_yield = yf.download("^TNX", start=date_start, end=date_end, interval="1d")[['Close']]
 US_10Y = yf.download("ZN=F", start=date_start, end=date_end, interval="1d")[['Close']]
 _1m_momentum_US_10Y = US_10Y - US_10Y.shift(22)
 _1m_momentum_US_10Y.dropna(inplace=True)
@@ -88,12 +89,13 @@ real_gdp_us = pd.DataFrame(
     fred.get_series(ticker_real_gdp_us, observation_start=date_start, observation_end=date_end, freq=frequency))
 infla_breakeven_us = pd.DataFrame(
     fred.get_series(infla_breakeven, observation_start=date_start, observation_end=date_end, freq=frequency))
-
-real_gdp_us_ch = real_gdp_us.pct_change()
-infla_3m_ch = infla_breakeven_us.pct_change(66)
 infla_breakeven_us.dropna(inplace=True)
 
-FV = (real_gdp_us_ch+infla_3m_ch)/2
+real_gdp_us_ch = real_gdp_us.pct_change()
+
+
+
+FV = US_10Y_yield - (real_gdp_us_ch+infla_breakeven_us)
 FV.dropna(inplace=True)
 zscore_FV = stats.zscore(FV)
 
