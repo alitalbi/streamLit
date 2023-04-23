@@ -109,21 +109,21 @@ list_q_strategies = map(quantiles_,[zscore_citi_surprise,zscore_momentum_10y,z_s
 score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry"],"US":list_q_strategies})
 st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
 
-fig = make_subplots(rows=3, cols=2)
+fig = make_subplots(rows=3, cols=2,subplot_titles=["US Citi Surprise Index","Bond Momentum (1M on 10 YTN)","Equity Momentum (1M on S&P)","Value","Carry"])
 
 fig.add_trace(go.Scatter(x=US_citi_surprise_index.index.to_list(), y=US_citi_surprise_index.iloc[:,0], name="US Citi Surprise Index",
-                                          mode="lines", line=dict(width=2, color='white'), showlegend=True), row=1, col=1)
+                                          mode="lines", line=dict(width=2, color='white'), showlegend=False), row=1, col=1)
 fig.add_trace(
     go.Scatter(x=_1m_momentum_US_10Y.index.to_list(), y=_1m_momentum_US_10Y.iloc[:, 0], name="Bond Momentum (1M on 10 YTN)",
-               mode="lines", line=dict(width=2, color='green'),showlegend=True), row=1, col=2)
+               mode="lines", line=dict(width=2, color='green'),showlegend=False), row=1, col=2)
 fig.add_trace(
     go.Scatter(x=_1m_momentum_SP.index.to_list(), y=_1m_momentum_SP.iloc[:,0], name="Equity Momentum (1M on S&P)",
-               mode="lines", line=dict(width=2, color='orange'), showlegend=True), row=2, col=1)
+               mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=2, col=1)
 fig.add_trace(
     go.Scatter(x=FV.index.to_list(), y=FV.iloc[:, 0], name="Value",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=2)
 fig.add_trace(go.Scatter(x=carry.index.to_list(), y=carry.iloc[:,0], name="Carry",
-                                          mode="lines", line=dict(width=2, color='purple'), showlegend=True), row=3, col=1)
+                                          mode="lines", line=dict(width=2, color='purple'), showlegend=False), row=3, col=1)
 
 
 fig.update_layout(
