@@ -122,7 +122,7 @@ fig.add_trace(
 fig.add_trace(
     go.Scatter(x=FV.index.to_list(), y=FV.iloc[:, 0], name="Value",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=2)
-fig.add_trace(go.Scatter(x=carry.index.to_list(), y=carry.iloc[:,1], name="Carry",
+fig.add_trace(go.Scatter(x=carry.index.to_list(), y=carry.iloc[:,0], name="Carry",
                                           mode="lines", line=dict(width=2, color='purple'), showlegend=True), row=3, col=1)
 
 
