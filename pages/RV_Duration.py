@@ -111,13 +111,13 @@ st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
 
 fig = make_subplots(rows=3, cols=2)
 
-fig.add_trace(go.Scatter(x=US_citi_surprise_index.index.to_list(), y=US_citi_surprise_index.iloc[:,1], name="US Citi Surprise Index",
+fig.add_trace(go.Scatter(x=US_citi_surprise_index.index.to_list(), y=US_citi_surprise_index.iloc[:,0], name="US Citi Surprise Index",
                                           mode="lines", line=dict(width=2, color='white'), showlegend=True), row=1, col=1)
 fig.add_trace(
     go.Scatter(x=_1m_momentum_US_10Y.index.to_list(), y=_1m_momentum_US_10Y.iloc[:, 0], name="Bond Momentum (1M on 10 YTN)",
                mode="lines", line=dict(width=2, color='green'),showlegend=True), row=1, col=2)
 fig.add_trace(
-    go.Scatter(x=_1m_momentum_SP.index.to_list(), y=_1m_momentum_SP.iloc[:,1], name="Equity Momentum (1M on S&P)",
+    go.Scatter(x=_1m_momentum_SP.index.to_list(), y=_1m_momentum_SP.iloc[:,0], name="Equity Momentum (1M on S&P)",
                mode="lines", line=dict(width=2, color='orange'), showlegend=True), row=2, col=1)
 fig.add_trace(
     go.Scatter(x=FV.index.to_list(), y=FV.iloc[:, 0], name="Value",
