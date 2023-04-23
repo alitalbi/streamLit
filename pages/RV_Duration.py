@@ -10,7 +10,7 @@ import streamlit as st
 
 st.set_page_config(page_title="RV Duration")
 st.sidebar.header("Real Value & Duration Framework")
-path =os.cwd()
+#path =os.cwd()
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
 date_start = "2010-01-01"
