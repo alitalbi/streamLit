@@ -7,6 +7,8 @@ from scipy import stats
 import numpy as np
 import os
 import streamlit as st
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 st.set_page_config(page_title="RV Duration")
 st.sidebar.header("Real Value & Duration Framework")
@@ -106,6 +108,44 @@ list_q_strategies = map(quantiles_,[zscore_citi_surprise,zscore_momentum_10y,z_s
 
 score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry"],"US":list_q_strategies})
 st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
-#st.plotly_chart(fig_, use_container_width=True)
+
+fig = make_subplots(rows=3, cols=2)
+
+fig.add_trace(go.Scatter(x=US_citi_surprise_index.index.to_list(), y=US_citi_surprise_index.iloc[:,1], name="US Citi Surprise Index",
+                                          mode="lines", line=dict(width=2, color='white'), showlegend=True), row=1, col=1)
+fig.add_trace(
+    go.Scatter(x=_1m_momentum_US_10Y.index.to_list(), y=_1m_momentum_US_10Y.iloc[:, 0], name="Bond Momentum (1M on 10 YTN)",
+               mode="lines", line=dict(width=2, color='green'),showlegend=True), row=1, col=2)
+fig.add_trace(
+    go.Scatter(x=_1m_momentum_SP.index.to_list(), y=_1m_momentum_SP.iloc[:,1], name="Equity Momentum (1M on S&P)",
+               mode="lines", line=dict(width=2, color='orange'), showlegend=True), row=2, col=1)
+fig.add_trace(
+    go.Scatter(x=FV.index.to_list(), y=FV.iloc[:, 0], name="Value",
+               mode="lines", line=dict(width=2, color='green'), showlegend=False), row=2, col=2)
+fig.add_trace(go.Scatter(x=carry.index.to_list(), y=carry.iloc[:,1], name="Carry",
+                                          mode="lines", line=dict(width=2, color='purple'), showlegend=True), row=3, col=1)
+
+
+fig.update_layout(
+    template="plotly_dark",
+    title={
+        'text': "Inflation Outlook",
+        'y': 0.9,
+        'x': 0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'})
+
+fig.update_layout(  # customize font and legend orientation & position
+    title_font_family="Arial Black",
+    font=dict(
+        family="Rockwell",
+        size=16),
+    legend=dict(
+        title=None, orientation="h", y=0.97, yanchor="bottom", x=0.5, xanchor="center"
+    )
+)
+fig.update_layout(height=650, width=1500)
+
+st.plotly_chart(fig, use_container_width=True)
 
 
