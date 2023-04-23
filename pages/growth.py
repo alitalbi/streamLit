@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 from datetime import datetime,timedelta
-
+import requests
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
 
@@ -145,7 +145,11 @@ composite_growth_10 = pd.concat(
 composite_growth_10.dropna(inplace=True)
 composite_growth_10 = pd.DataFrame(composite_growth_10.mean(axis=1))
 composite_growth_10.columns = ["10 yr average"]
-atlanta_gdp_now = pd.read_excel('https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx',sheet_name="TrackingArchives")[['Forecast Date','GDP Nowcast']]
+url = 'https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx'
+response = requests.get(url)
+
+# Use pandas to read the downloaded Excel file from memory
+atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
 atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
 #composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
 fig_ = go.Figure()
