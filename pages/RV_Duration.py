@@ -35,7 +35,7 @@ def quantiles_(data):
     else:
         return 5
 #Citi Surprise Index
-US_citi_surprise_index = pd.read_csv("US_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
+US_citi_surprise_index = pd.read_csv("./data/US_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 #EU_citi_surprise_index = pd.read_csv(path + "EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 
 #10 US treasury future price : Treasury Yield 10 Years (^TNX)
