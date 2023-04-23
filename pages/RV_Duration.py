@@ -39,18 +39,19 @@ def quantiles_(data):
     else:
         return 5
 
-
+def dot(data1,data2):
+    return [data1[i]*data2[i] for i in range(len(data1))]
 def filter_color(val):
     if val == 1:
-        return 'background-color: rgba( 124, 252, 0, 1 )'
+        return 'background-color: rgba( 220, 20, 60, 1 )'
     elif val == 2:
-        return 'background-color: rgba( 152, 251, 152, 1 )'
+        return 'background-color: rgba( 240, 128, 128, 1 )'
     elif val == 3:
         pass
     elif val == 4:
-        return 'background-color: rgba( 240, 128, 128, 1 )'
+        return 'background-color: rgba( 152, 251, 152, 1 )'
     elif val == 5:
-        return 'background-color: rgba( 220, 20, 60, 1 )'
+        return 'background-color: rgba( 124, 252, 0, 1 )'
 #Citi Surprise Index
 US_citi_surprise_index = pd.read_csv("https://raw.githubusercontent.com/alitalbi/streamLit/master/data/EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 #EU_citi_surprise_index = pd.read_csv(path + "EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
@@ -112,9 +113,12 @@ carry = _10Y_T_Note - _3M_US_Bill
 zscore_carry = stats.zscore(carry)
 
 #list quantiles strategies
-list_q_strategies = map(quantiles_,[zscore_citi_surprise,zscore_momentum_10y,z_score_momentum_SP,zscore_FV,zscore_carry])
+list_q_strategies = list(map(quantiles_,[zscore_citi_surprise,zscore_momentum_10y,z_score_momentum_SP,zscore_FV,zscore_carry]))
 
-score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry"],"US":list_q_strategies})
+weights = [0.18,0.18,0.18,0.28,0.18]
+list_q_strategies = list_q_strategies+sum(dot(weights,list_q_strategies))
+score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry","Total Score"],"US":list_q_strategies})
+
 st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
 
 fig = make_subplots(rows=3, cols=2,subplot_titles=["US Citi Surprise Index","Bond Momentum (1M on 10 YTN)","Equity Momentum (1M on S&P)","Value","Carry"])
