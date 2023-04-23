@@ -59,7 +59,7 @@ zscore_citi_surprise = stats.zscore(US_citi_surprise_index)
 #Bond Momentum : 1M change in 10Y future contract
 
 #US_10Y = pd.read_csv(path + "US 10 Year T-Note Futures Historical Data.csv",index_col=["Date"])['Price'][::-1].apply(lambda x:float(x.replace(",",".")))
-US_10Y_yield = yf.download("^TNX", start=date_start, end=date_end, interval="1d")[['Close']]
+_10Y_T_Note = yf.download("^TNX", start=date_start, end=date_end, interval="1d")[['Close']]
 US_10Y = yf.download("ZN=F", start=date_start, end=date_end, interval="1d")[['Close']]
 _1m_momentum_US_10Y = US_10Y - US_10Y.shift(22)
 _1m_momentum_US_10Y.dropna(inplace=True)
@@ -92,13 +92,13 @@ infla_breakeven_us = pd.DataFrame(
 
 real_gdp_us_ch = real_gdp_us.pct_change()
 #real gdp data ends 2022-10-01
-#infla breakeven doesnt have 2022-10-01 point but 2022-10-03
+#infla breakeven doesnt have 2022-10-01 point but start the month at day 3
 infla_breakeven_us.dropna(inplace=True)
 
 gdp_infla_breakeven = (real_gdp_us_ch+infla_breakeven_us)
 gdp_infla_breakeven.columns = ['Close']
 gdp_infla_breakeven.dropna(inplace=True)
-FV = US_10Y_yield - gdp_infla_breakeven
+FV = _10Y_T_Note - gdp_infla_breakeven
 FV.dropna(inplace=True)
 FV.plot()
 plt.show()
@@ -106,7 +106,6 @@ zscore_FV = stats.zscore(FV)
 
 #Carry spread 3M and 10Y
 _3M_US_Bill= yf.download("^IRX", start=date_start, end=date_end, interval="1d")[['Close']]
-_10Y_T_Note = yf.download("^TNX", start=date_start, end=date_end, interval="1d")[['Close']]
 carry = _10Y_T_Note - _3M_US_Bill
 zscore_carry = stats.zscore(carry)
 
