@@ -116,7 +116,7 @@ zscore_carry = stats.zscore(carry)
 list_q_strategies = list(map(quantiles_,[zscore_citi_surprise,zscore_momentum_10y,z_score_momentum_SP,zscore_FV,zscore_carry]))
 
 weights = [0.18,0.18,0.18,0.28,0.18]
-list_q_strategies = list_q_strategies+sum(dot(weights,list_q_strategies))
+list_q_strategies.append(sum(dot(weights,list_q_strategies)))
 score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry","Total Score"],"US":list_q_strategies})
 
 st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
