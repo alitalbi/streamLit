@@ -3,9 +3,11 @@ import pandas as pd
 from fredapi import Fred
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-
+import numpy as np
 from datetime import datetime,timedelta
+
+fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
+
 
 st.set_page_config(page_title="growth")
 st.markdown(
@@ -82,7 +84,25 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
     print(data_)
     return data_[['_6m_smoothing_growth']], data_2[['10 yr average']]
 
+def quantiles_(data):
+    # Compute the 5 quantiles
+    quantiles = np.percentile(data, [0, 25, 50, 75, 100])
 
+    # Print the quantiles
+    print("Quantiles: ", quantiles)
+
+    # Determine which quantile the last data point belongs to
+    last_data_point = data.iloc[-1,0]
+    if last_data_point <= quantiles[1]:
+        return 1
+    elif last_data_point <= quantiles[2]:
+        return 2
+    elif last_data_point <= quantiles[3]:
+        return 3
+    elif last_data_point <= quantiles[4]:
+        return 4
+    else:
+        return 5
 # Set title and description of the app
 st.markdown("growth")
 st.sidebar.header("growth")
