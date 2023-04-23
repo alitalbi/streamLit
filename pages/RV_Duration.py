@@ -5,12 +5,12 @@ from fredapi import Fred
 import matplotlib.pyplot as plt
 from scipy import stats
 import numpy as np
-
+import os
 import streamlit as st
 
 st.set_page_config(page_title="RV Duration")
 st.sidebar.header("Real Value & Duration Framework")
-path ="/Users/talbi/Downloads/"
+path =os.cwd()
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
 date_start = "2010-01-01"
@@ -36,7 +36,7 @@ def quantiles_(data):
         return 5
 #Citi Surprise Index
 US_citi_surprise_index = pd.read_csv(path + "US_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
-EU_citi_surprise_index = pd.read_csv(path + "EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
+#EU_citi_surprise_index = pd.read_csv(path + "EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 
 #10 US treasury future price : Treasury Yield 10 Years (^TNX)
 zscore_citi_surprise = stats.zscore(US_citi_surprise_index)
