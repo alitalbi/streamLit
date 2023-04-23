@@ -145,6 +145,8 @@ composite_growth_10 = pd.concat(
 composite_growth_10.dropna(inplace=True)
 composite_growth_10 = pd.DataFrame(composite_growth_10.mean(axis=1))
 composite_growth_10.columns = ["10 yr average"]
+atlanta_gdp_now = pd.read_excel('https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx',sheet_name="TrackingArchives")[['Forecast Date','GDP Nowcast']]
+atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
 #composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
 fig_ = go.Figure()
 
@@ -156,6 +158,9 @@ fig_ = go.Figure()
 fig_.add_trace(go.Scatter(x=composite_growth.index.to_list(), y=composite_growth._6m_smoothing_growth / 100,
                           name="6m growth average",
                           mode="lines", line=dict(width=2, color='white')))
+fig_.add_trace(go.Scatter(x=atlanta_gdp_now.index.to_list(), y=atlanta_gdp_now.iloc[:,0],
+                          name="Atlanta Fed GDP Nowcast",
+                          mode="lines", line=dict(width=2, color='blue')))
 fig_.add_trace(go.Scatter(x=composite_growth_10.index.to_list(),
                           y=composite_growth_10['10 yr average'] / 100,
                           name="10 YR average",
