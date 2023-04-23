@@ -35,7 +35,7 @@ def quantiles_(data):
     else:
         return 5
 #Citi Surprise Index
-US_citi_surprise_index = pd.read_csv("https://raw.githubusercontent.com/alitalbi/streamLit/9aaa5c059f196e2c4fe163f3a76190db0f646010/data/US%2010%20Year%20T-Note%20Futures%20Historical%20Data.csv",index_col=['Date'])
+US_citi_surprise_index = pd.read_csv("https://raw.githubusercontent.com/alitalbi/streamLit/master/data/EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 #EU_citi_surprise_index = pd.read_csv(path + "EU_citi_surprise_index.csv",skiprows=[0],index_col=['Date'])
 
 #10 US treasury future price : Treasury Yield 10 Years (^TNX)
