@@ -117,9 +117,9 @@ list_q_strategies = list(map(quantiles_,[zscore_citi_surprise,zscore_momentum_10
 
 weights = [0.18,0.18,0.18,0.28,0.18]
 list_q_strategies.append(sum(dot(weights,list_q_strategies)))
-score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry","Total Score"],"US":pd.Series(list_q_strategies).apply(lambda x:round(x,2))})
+score_table_merged = pd.DataFrame({"Strategy":["Macro Surprise","Bond Momentum","Equity Momentum","Value","Carry","Total Score"],"US":list_q_strategies})
 
-st.table(score_table_merged.style.applymap(filter_color,subset=['US']))
+st.table(score_table_merged.style.applymap(filter_color,subset=['US']),formatter="{:.2f}")
 
 fig = make_subplots(rows=3, cols=2,subplot_titles=["US Citi Surprise Index","Bond Momentum (1M on 10 YTN)","Equity Momentum (1M on S&P)","Value","Carry"])
 
