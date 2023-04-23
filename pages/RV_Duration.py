@@ -121,6 +121,8 @@ fig = make_subplots(rows=3, cols=2,subplot_titles=["US Citi Surprise Index","Bon
 
 fig.add_trace(go.Scatter(x=US_citi_surprise_index.index.to_list(), y=US_citi_surprise_index.iloc[:,0], name="US Citi Surprise Index",
                                           mode="lines", line=dict(width=2, color='white'), showlegend=False), row=1, col=1)
+fig.add_trace(go.Scatter(x=US_citi_surprise_index.index.to_list(), y=_10Y_T_Note.iloc[:,0], name="10Y T Note",
+                                          mode="lines", line=dict(width=2, color='white'), showlegend=False), row=1, col=1)
 fig.add_trace(
     go.Scatter(x=_1m_momentum_US_10Y.index.to_list(), y=_1m_momentum_US_10Y.iloc[:, 0], name="Bond Momentum (1M on 10 YTN)",
                mode="lines", line=dict(width=2, color='green'),showlegend=False), row=1, col=2)
