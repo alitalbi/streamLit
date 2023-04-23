@@ -89,14 +89,19 @@ real_gdp_us = pd.DataFrame(
     fred.get_series(ticker_real_gdp_us, observation_start=date_start, observation_end=date_end, freq=frequency))
 infla_breakeven_us = pd.DataFrame(
     fred.get_series(infla_breakeven, observation_start=date_start, observation_end=date_end, freq=frequency))
-infla_breakeven_us.dropna(inplace=True)
 
 real_gdp_us_ch = real_gdp_us.pct_change()
+#real gdp data ends 2022-10-01
+#infla breakeven doesnt have 2022-10-01 point but 2022-10-03
+infla_breakeven_us.dropna(inplace=True)
 
-
-
-FV = US_10Y_yield - (real_gdp_us_ch+infla_breakeven_us)
+gdp_infla_breakeven = (real_gdp_us_ch+infla_breakeven_us)
+gdp_infla_breakeven.columns = ['Close']
+gdp_infla_breakeven.dropna(inplace=True)
+FV = US_10Y_yield - gdp_infla_breakeven
 FV.dropna(inplace=True)
+FV.plot()
+plt.show()
 zscore_FV = stats.zscore(FV)
 
 #Carry spread 3M and 10Y
