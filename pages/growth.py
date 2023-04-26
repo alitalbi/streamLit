@@ -43,7 +43,7 @@ def filter_color(val):
 
 def smooth_data(internal_ticker, date_start, date_start2, date_end):
     date_start= (datetime.strptime(date_start,"%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
-    print(date_start)
+    #print(date_start)
     data_ = pd.DataFrame(
         fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
 
@@ -75,7 +75,7 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
 
 def data_smooth(data_,date_start,date_end):
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
-    #data_.index = pd.to_datetime(data_.index)
+    #data_.index = pd.to_datetime(data_.index).dt.date()
     # creating 6m smoothing growth column and 10yr average column
     # Calculate the smoothed average
     average = data_.iloc[:, 0].rolling(11).mean()
@@ -140,6 +140,7 @@ indpro, indpro_10 = smooth_data("INDPRO", date_start_converted, date_start2_conv
 print('4')
 nonfarm, nonfarm_10 = smooth_data("PAYEMS", date_start_converted, date_start2_converted, date_end_converted)
 print("5")
+
 real_pers, real_pers_10 = smooth_data("W875RX1", date_start_converted, date_start2_converted, date_end_converted)
 
 retail_sales, retail_sales_10 = smooth_data("RRSFS", date_start_converted, date_start2_converted, date_end_converted)
@@ -167,10 +168,14 @@ response = requests.get(url)
 
 # Use pandas to read the downloaded Excel file from memory
 atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
+print("ali")
+
 #atlanta_gdp_now["Forecast Date"] = atlanta_gdp_now["Forecast Date"].apply(lambda x:datetime.strftime(x,"%Y-%m-%d"))
 atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
 
-a= data_smooth(atlanta_gdp_now,date_start,date_end)
+#a= data_smooth(atlanta_gdp_now,date_start,date_end)
+#print("atlanta index date type : ",type(a.index))
+
 #composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
 fig_ = go.Figure()
 

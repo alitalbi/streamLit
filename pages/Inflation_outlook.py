@@ -140,7 +140,7 @@ wages_10 = wages_10[['10 yr average']] - cpi_10[['10 yr average']]
 
 core_cpi, core_cpi_10 = smooth_data("CPILFESL", date_start, date_start2, date_end)
 core_pce, core_pce_10 = smooth_data("DPCCRC1M027SBEA", date_start, date_start2, date_end)
-
+print("core cpi index type : ",type(core_cpi.index))
 shelter_title = "Shelter Prices"
 wages_title = " Fred Wages"
 
