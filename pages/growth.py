@@ -73,6 +73,23 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
     print(data_)
     return data_[['_6m_smoothing_growth']], data_2[['10 yr average']]
 
+def data_smooth(data_,date_start,date_end):
+    data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
+    #data_.index = pd.to_datetime(data_.index)
+    # creating 6m smoothing growth column and 10yr average column
+    # Calculate the smoothed average
+    average = data_.iloc[:, 0].rolling(11).mean()
+    shifted = data_.iloc[:, 0].shift(11)
+    # Calculate the annualized growth rate
+    annualized_6m_smoothed_growth_rate = (data_.iloc[11:, 0] / average) ** 2 - 1
+
+    # Multiply the result by 100 and store it in the _6m_smoothing_growth column
+    data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+    data_.dropna(inplace=True)
+
+    print(data_)
+    return data_[['_6m_smoothing_growth']]
+
 def quantiles_(data):
     # Compute the 5 quantiles
     quantiles = np.percentile(data, [0, 25, 50, 75, 100])
@@ -150,7 +167,10 @@ response = requests.get(url)
 
 # Use pandas to read the downloaded Excel file from memory
 atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
+#atlanta_gdp_now["Forecast Date"] = atlanta_gdp_now["Forecast Date"].apply(lambda x:datetime.strftime(x,"%Y-%m-%d"))
 atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
+
+a= data_smooth(atlanta_gdp_now,date_start,date_end)
 #composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
 fig_ = go.Figure()
 
@@ -162,7 +182,7 @@ fig_ = go.Figure()
 fig_.add_trace(go.Scatter(x=composite_growth.index.to_list(), y=composite_growth._6m_smoothing_growth / 100,
                           name="6m growth average",
                           mode="lines", line=dict(width=2, color='white')))
-fig_.add_trace(go.Scatter(x=atlanta_gdp_now.index.to_list(), y=atlanta_gdp_now.iloc[:,0],
+fig_.add_trace(go.Scatter(x=atlanta_gdp_now.index.to_list(), y=atlanta_gdp_now.iloc[:,0]/100,
                           name="Atlanta Fed GDP Nowcast",
                           mode="lines", line=dict(width=2, color='blue')))
 fig_.add_trace(go.Scatter(x=composite_growth_10.index.to_list(),
