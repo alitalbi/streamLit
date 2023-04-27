@@ -313,6 +313,26 @@ score_table_merged = pd.concat(
      score_table("COMPOSITE GROWTH", composite_growth, composite_growth_10)], axis=0)
 score_table_merged = score_table_merged.iloc[:, [4, 0, 1, 2, 3]]
 score_table_merged.reset_index(inplace=True,drop=True)
-st.table(score_table_merged.style.applymap(filter_color,subset=['Score']))
+
+# define the up and down arrow symbols
+up_arrow = '\u2191'
+down_arrow = '\u2193'
+
+# define a function to format the values in the specified column with arrows
+def format_value(column_name, value):
+    if column_name in ['trend vs history ', 'growth', 'Direction of Trend']:
+        if value == 1:
+            return f"{up_arrow}"
+        elif value == 0:
+            return f"{down_arrow}"
+    return value
+
+# format the table data with arrows in columns 1 and 2
+for col in ['trend vs history ', 'growth', 'Direction of Trend']:
+    score_table_merged[col] = score_table_merged[col].apply(lambda x: format_value(col, x))
+
+# display the formatted table
+
+st.write(score_table_merged.style.applymap(filter_color,subset=['Score']))
 st.plotly_chart(fig_, use_container_width=True)
 st.plotly_chart(fig_cyclical_trends, use_container_width=True)
