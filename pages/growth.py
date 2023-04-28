@@ -209,7 +209,7 @@ qs=atlanta_gdp_now.loc[(atlanta_gdp_now.index > np.datetime64(date_start)) & (at
 
 #           max(composite_growth._6m_smoothing_growth) * 1.1])
 fig_.update_layout(  # customize font and legend orientation & position
-    yaxis=dict(tickformat=".1%",range=[min(qs.iloc[:,0])/100-0.001, max(qs.iloc[:,0])/100+0.001]),
+    yaxis=dict(tickformat=".1%",range=[min(qs.iloc[:,0])/100-0.1, max(qs.iloc[:,0])/100+0.1]),
 
     title_font_family="Arial Black",
     font=dict(
