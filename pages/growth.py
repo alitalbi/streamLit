@@ -303,7 +303,7 @@ fig_cyclical_trends.layout.xaxis5.range = [date_start, date_end]
 fig_cyclical_trends.layout.xaxis6.range = [date_start, date_end]
 
 
-fig_['layout']['yaxis'].update(autorange=True)
+#fig_['layout']['yaxis'].update(autorange=True)
 score_table_merged = pd.concat(
     [score_table("PCE", pcec96, pcec96_10), score_table("Industrial Production", indpro, indpro_10),
      score_table("NonFarm Payroll", nonfarm, nonfarm_10),
