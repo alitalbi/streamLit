@@ -180,10 +180,13 @@ atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
 fig_ = go.Figure()
 
 
-# drop the blank values
+
+cli = pd.read_csv("https://stats.oecd.org/sdmx-json/data/DP_LIVE/USA.CLI.AMPLITUD.LTRENDIDX.M/OECD?contentType=csv&detail=code&separator=comma&csv-lang=en&startPeriod=1955-01&endPeriod=2023-03",index_col=["TIME"])['Value']
 
 # ploting the data
 # composite_growth_10 = 100 * (composite_growth.iloc[:, 0].rolling(10).mean().pct_change())
+fig_.add_trace(go.Scatter(x=cli.index.to_list(), y=cli.iloc[:,0] * 100,name="OECD CLI",
+                          mode="lines", line=dict(width=2, color='orange')))
 fig_.add_trace(go.Scatter(x=composite_growth.index.to_list(), y=composite_growth._6m_smoothing_growth / 100,
                           name="6m growth average",
                           mode="lines", line=dict(width=2, color='white')))
