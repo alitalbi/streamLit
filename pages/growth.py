@@ -185,7 +185,7 @@ cli = pd.read_csv("https://stats.oecd.org/sdmx-json/data/DP_LIVE/USA.CLI.AMPLITU
 
 # ploting the data
 # composite_growth_10 = 100 * (composite_growth.iloc[:, 0].rolling(10).mean().pct_change())
-fig_.add_trace(go.Scatter(x=cli.index.to_list(), y=cli.iloc[:,0] * 100,name="OECD CLI",
+fig_.add_trace(go.Scatter(x=cli.index.to_list(), y=cli.iloc[:,0],name="OECD CLI",
                           mode="lines", line=dict(width=2, color='orange')))
 fig_.add_trace(go.Scatter(x=composite_growth.index.to_list(), y=composite_growth._6m_smoothing_growth / 100,
                           name="6m growth average",
