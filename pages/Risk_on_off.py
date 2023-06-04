@@ -111,27 +111,30 @@ red = np.array([255, 0, 0])  # RGB values for red
 dark_green = np.array([0, 100, 0])  # RGB values for dark green
 light_green = np.array([144, 238, 144])  # RGB values for light green
 
-# Define a function to apply cell background color based on values
+# Define a function to apply cell background color and text color based on values
 def color_scale(val):
     if val < 0:
         quantiles = concat_momentum.iloc[:, :3].stack().quantile([0.25, 0.75])
         min_val, max_val = quantiles.iloc[0], quantiles.iloc[1]
         intensity = (val - min_val) / (max_val - min_val)
         color = red + abs(intensity) * (dark_green - red)
+
     elif val > 0:
         quantiles = concat_momentum.iloc[:, :3].stack().quantile([0.25, 0.75])
         min_val, max_val = quantiles.iloc[0], quantiles.iloc[1]
         intensity = (val - min_val) / (max_val - min_val)
         color = dark_green + intensity * (light_green - dark_green)
+
     else:
-        color = dark_green
+        color = light_green
+
 
     # Ensure RGB values are within valid range (0-255)
     color = np.clip(color, 0, 255)
 
     # Convert RGB values to hexadecimal color code
     hex_code = '#{:02x}{:02x}{:02x}'.format(int(color[0]), int(color[1]), int(color[2]))
-    return f'background-color: {hex_code}'
+    return f'background-color: {hex_code}; color: {text_color}'
 # Apply cell background color to the first three columns, excluding the last row
 styled_df = concat_momentum.style.applymap(color_scale)
 
