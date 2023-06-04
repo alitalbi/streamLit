@@ -109,21 +109,24 @@ concat_momentum.columns = ["1w","1m","3m","aggregate_periods"]
 # Define custom color scale
 red = np.array([255, 0, 0])  # RGB values for red
 dark_green = np.array([0, 100, 0])  # RGB values for dark green
-light_green = np.array([144, 238, 144])  # RGB values for light green (a bit lighter)
+light_green = np.array([144, 238, 144])  # RGB values for light green
+white = np.array([255, 255, 255])  # RGB values for white
 
 # Define a function to apply cell background color based on values
 def color_scale(val):
     if val < 0:
-        color = red + (1 - abs(val)) * (dark_green - red)
+        color = red + abs(val) * (dark_green - red)
     elif val > 0:
-        color = dark_green + val * (light_green - dark_green)
+        color = white + val * (light_green - white)
     else:
-        color = np.array([255, 255, 255])  # RGB values for white (no color)
+        color = white
+
+    # Ensure RGB values are within valid range (0-255)
+    color = np.clip(color, 0, 255)
 
     # Convert RGB values to hexadecimal color code
     hex_code = '#{:02x}{:02x}{:02x}'.format(int(color[0]), int(color[1]), int(color[2]))
     return f'background-color: {hex_code}'
-
 # Apply cell background color to the first three columns, excluding the last row
 styled_df = concat_momentum.style.applymap(color_scale)
 
