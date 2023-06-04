@@ -124,7 +124,7 @@ def color_scale(val):
     return f'background-color: {hex_code}'
 
 # Apply cell background color to the first three columns, excluding the last row
-styled_df = concat_momentum.iloc[:-1, :3].style.applymap(color_scale)
+styled_df = concat_momentum.style.applymap(color_scale)
 
 styled_df = styled_df.set_properties(subset=pd.IndexSlice["aggregate_ratios", :], **{'color': '', 'background-color': ''})
 styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"], **{'color': '', 'background-color': ''})
