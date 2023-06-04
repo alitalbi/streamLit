@@ -134,7 +134,7 @@ def color_scale(val):
 
     # Convert RGB values to hexadecimal color code
     hex_code = '#{:02x}{:02x}{:02x}'.format(int(color[0]), int(color[1]), int(color[2]))
-    return f'background-color: {hex_code}; color: {text_color}'
+    return f'background-color: {hex_code}'
 # Apply cell background color to the first three columns, excluding the last row
 styled_df = concat_momentum.style.applymap(color_scale)
 
