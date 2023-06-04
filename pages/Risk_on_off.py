@@ -117,9 +117,9 @@ def color_scale(val):
     if val < 0:
         color = red + abs(val) * (dark_green - red)
     elif val > 0:
-        color = white + val * (light_green - white)
+        color = np.array([0, 100, 0]) + val * (light_green - white)
     else:
-        color = white
+        color = np.array([0, 100, 0])
 
     # Ensure RGB values are within valid range (0-255)
     color = np.clip(color, 0, 255)
