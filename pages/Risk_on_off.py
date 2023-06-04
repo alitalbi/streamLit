@@ -116,5 +116,5 @@ styled_df = concat_momentum.iloc[:-1, :3].style.applymap(color_negative_red)
 styled_df.loc["aggregate_ratios"] = concat_momentum.loc['aggregate_ratios',:].values
 styled_df['aggregate_periods'] = concat_momentum['aggregate_periods']
 # Display the styled DataFrame in Streamlit
-st.dataframe(styled_df)
-print("hi")
+st.dataframe(styled_df,width=800)
+
