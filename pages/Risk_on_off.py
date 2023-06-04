@@ -114,12 +114,11 @@ def color_negative_red(val):
 # Apply color formatting to the first three columns, excluding the last row
 styled_df = concat_momentum.style.applymap(color_negative_red)
 
-# Get the last row and last column of the DataFrame
-last_row = concat_momentum.iloc[-1]
-last_column = concat_momentum.iloc[:, -1]
-
+# Exclude the last row and last column from cell styling
+styled_df = styled_df.set_properties(subset=pd.IndexSlice["aggregate_ratios", :], **{'color': '', 'background-color': ''})
+styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"], **{'color': '', 'background-color': ''})
 
 
 # Display the styled DataFrame in Streamlit
-st.write(styled_df,width=1000,height=1400)
+st.write(styled_df,width=1100,height=1400)
 
