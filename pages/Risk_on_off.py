@@ -116,23 +116,25 @@ def color_scale(val):
     if val < 0:
         quantiles = concat_momentum.iloc[:, :3].stack().quantile([0.25, 0.75])
         min_val, max_val = quantiles.iloc[0], quantiles.iloc[1]
-        intensity = (val - min_val) / (max_val - min_val)
-        color = red + (1 - abs(intensity)) * (dark_green - red)
+        intensity = (val-0.5 - min_val) / (max_val - min_val)
+        color = red + abs(intensity) * (dark_green - red)
+
     elif val > 0:
         quantiles = concat_momentum.iloc[:, :3].stack().quantile([0.25, 0.75])
-        min_val, max_val = quantiles.iloc[0], quantiles.iloc[1]
-        intensity = (val - min_val) / (max_val - min_val)
+        max_val, min_val = quantiles.iloc[0], quantiles.iloc[1]
+        intensity = (val-0.5 - min_val) / (max_val - min_val)
         color = dark_green + intensity * (light_green - dark_green)
+
     else:
         color = light_green
+
 
     # Ensure RGB values are within valid range (0-255)
     color = np.clip(color, 0, 255)
 
     # Convert RGB values to hexadecimal color code
     hex_code = '#{:02x}{:02x}{:02x}'.format(int(color[0]), int(color[1]), int(color[2]))
-    return f'background-color: {hex_code}; color: white'
-
+    return f'background-color: {hex_code}'
 # Apply cell background color to the first three columns, excluding the last row
 styled_df = concat_momentum.style.applymap(color_scale)
 
