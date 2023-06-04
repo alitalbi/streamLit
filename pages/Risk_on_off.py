@@ -106,15 +106,32 @@ concat_momentum.loc['aggregate_ratios'] = concat_momentum.mean()
 concat_momentum['aggregate_periods'] = concat_momentum.mean(axis=1)
 concat_momentum.columns = ["1w","1m","3m","aggregate_periods"]
 
-# Define a function to apply color formatting based on values
-def color_negative_red(val):
-    color = 'red' if val < 0 else 'green' if val > 0 else ''
-    return f'color: {color}'
+# Define custom color scale
+red = np.array([255, 0, 0])  # RGB values for red
+green = np.array([0, 255, 0])  # RGB values for green
 
-# Apply color formatting to the first three columns, excluding the last row
-styled_df = concat_momentum.style.applymap(color_negative_red)
+# Define a function to apply cell background color based on values
+def color_scale(val):
+    if val < 0:
+        color = red + (1 - abs(val)) * (green - red)
+    elif val > 0:
+        color = red + abs(val) * (green - red)
+    else:
+        color = np.array([255, 255, 255])  # RGB values for white (no color)
+
+    # Convert RGB values to hexadecimal color code
+    hex_code = '#{:02x}{:02x}{:02x}'.format(int(color[0]), int(color[1]), int(color[2]))
+    return f'background-color: {hex_code}'
+
+# Apply cell background color to the first three columns, excluding the last row
+styled_df = concat_momentum.iloc[:-1, :3].style.applymap(color_scale)
+
 
 # Exclude the last row and last column from cell styling
+styled_df = styled_df.set_properties(subset=pd.IndexSlice[last_row.name, :], **{'background-color': ''})
+styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, last_column.name], **{'background-color': ''})
+
+
 styled_df = styled_df.set_properties(subset=pd.IndexSlice["aggregate_ratios", :], **{'color': '', 'background-color': ''})
 styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"], **{'color': '', 'background-color': ''})
 
