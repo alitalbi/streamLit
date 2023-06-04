@@ -121,5 +121,5 @@ last_column = concat_momentum.iloc[:, -1]
 
 
 # Display the styled DataFrame in Streamlit
-st.write(styled_df,width=800)
+st.write(styled_df,width=950,height=1300)
 
