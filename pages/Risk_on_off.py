@@ -120,7 +120,7 @@ def color_scale(val):
         color = red + abs(intensity) * (dark_green - red)
 
     elif val > 0:
-        quantiles = concat_momentum.iloc[:, :3].stack().quantile([0.15, 0.99])
+        quantiles = concat_momentum.iloc[:, :3].stack().quantile([0.05, 0.99])
         max_val, min_val = quantiles.iloc[0], quantiles.iloc[1]
         intensity = (val - min_val) / (max_val - min_val)
 
