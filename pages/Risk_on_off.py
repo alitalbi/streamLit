@@ -115,6 +115,14 @@ def color_negative_red(val):
 styled_df = concat_momentum.iloc[:-1, :3].style.applymap(color_negative_red)
 styled_df.loc["aggregate_ratios"] = styled_df.mean()
 styled_df['aggregate_periods'] = concat_momentum['aggregate_periods']
+# Get the last row and last column of the DataFrame
+last_row = concat_momentum.iloc[-1]
+last_column = concat_momentum.iloc[:, -1]
+
+# Add the last row and last column to the styled DataFrame without applying color formatting
+styled_df.loc["aggregate_ratios"] = last_row
+styled_df['aggregate_periods'] = last_column
+
 # Display the styled DataFrame in Streamlit
-st.dataframe(styled_df,width=800)
+st.write(styled_df)
 
