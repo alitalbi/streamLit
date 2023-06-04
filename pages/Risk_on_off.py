@@ -144,5 +144,5 @@ styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"
 
 
 # Display the styled DataFrame in Streamlit
-st.dataframe(styled_df,width=1100,height=550)
+st.dataframe(styled_df,width=1100,height=535)
 
