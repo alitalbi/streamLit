@@ -108,7 +108,7 @@ concat_momentum.columns = ["1w","1m","3m","aggregate_periods"]
 
 # Define custom color scale
 red = np.array([255, 0, 0])  # RGB values for red
-dark_green = np.array([0, 100, 0])  # RGB values for dark green
+dark_green = np.array([43, 126, 31])  # RGB values for dark green
 light_green = np.array([144, 238, 144])  # RGB values for light green
 
 # Define a function to apply cell background color and text color based on values
