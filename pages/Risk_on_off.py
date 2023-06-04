@@ -112,7 +112,7 @@ def color_negative_red(val):
     return f'color: {color}'
 
 # Apply color formatting to the first three columns, excluding the last row
-styled_df = concat_momentum.iloc[:-1, :3].style.applymap(color_negative_red)
+styled_df = concat_momentum.style.applymap(color_negative_red)
 
 # Get the last row and last column of the DataFrame
 last_row = concat_momentum.iloc[-1]
@@ -121,5 +121,5 @@ last_column = concat_momentum.iloc[:, -1]
 
 
 # Display the styled DataFrame in Streamlit
-st.write(styled_df)
+st.write(styled_df,width=800)
 
