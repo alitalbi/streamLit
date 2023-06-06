@@ -146,8 +146,8 @@ styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"
 # Display the styled DataFrame in Streamlit
 st.dataframe(styled_df,width=1100,height=535)
 fig_1w = px.line(concat_data_1w,labels=dict(x="Date",y="Momentum 1w"))
-fig_1m = px.line(concat_data_1m,x="Date",y="Momentum 1m")
-fig_3m = px.line(concat_data_3m,x="Date",y="Momentum 3m")
+fig_1m = px.line(concat_data_1m,labels=dict(x="Date",y="Momentum 1m"))
+fig_3m = px.line(concat_data_3m,labels=dict(x="Date",y="Momentum 3m"))
 st.plotly_chart(fig_1w)
 st.plotly_chart(fig_1m)
 st.plotly_chart(fig_3m)
