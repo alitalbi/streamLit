@@ -1,5 +1,4 @@
-Backtesting==0.3.3
-backtesting==0.3.3
+backtesting
 altair==4.2.2
 appdirs==1.4.4
 attrs==23.1.0
