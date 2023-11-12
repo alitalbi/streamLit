@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from backtesting import Backtest
 from datetime import datetime,timedelta
+import backtesting
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
