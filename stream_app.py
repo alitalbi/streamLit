@@ -5,6 +5,7 @@ import sys
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
+import backtesting
 
 #sys.path.insert(1, '/Users/talbi/PycharmProjects/streamLit/venv/lib/python3.10/site-packages')
 st.set_page_config(page_title="yahoo finance search",page_icon="📈")
