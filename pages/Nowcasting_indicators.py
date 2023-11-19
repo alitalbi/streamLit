@@ -4,12 +4,12 @@ import yfinance as yf
 import backtesting
 from backtesting import Backtest
 from datetime import datetime,timedelta
-
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from backtesting.test import SMA
 from backtesting.lib import SignalStrategy, TrailingStrategy
+from backtesting import backtesting as backt
 import streamlit.components.v1 as components
 date_start = "2002-01-01"
 date_end = datetime.today().strftime("%Y-%m-%d")

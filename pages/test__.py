@@ -1,11 +1,56 @@
+import backtesting.backtesting
 import pandas as pd
 import matplotlib.pyplot as plt
+import yfinance as yf
+from backtesting import Backtest
+from datetime import datetime,timedelta
+import streamlit as st
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from strategies import strategies as strat
+import streamlit.components.v1 as components
+date_start = "2002-01-01"
+date_end = datetime.today().strftime("%Y-%m-%d")
+SmaCross = strat.SmaCross
 
 def import_data(url):
     df = pd.read_csv(url)
     df.set_index('As Of Date', inplace=True)
     df.drop(['Time Series'], axis=1, inplace=True)
     return df
+
+def export_yfinance_data(ticker):
+    price_df = yf.download(ticker,start =date_start ,end =date_end,interval="1d")
+    return price_df
+
+ticker = st.selectbox("Ticker",("UST Bond","2y T-Note","5y T-Note","10y T-Note"))
+
+mapping_dict_ticker  = {"UST Bond":"ZB=F",
+                        "2y T-Note":"ZT=F",
+                        "5y T-Note":"ZF=F",
+                        "10y T-Note":"ZN=F"}
+
+fig_ = go.Figure()
+if ticker:
+    price_df = export_yfinance_data(mapping_dict_ticker[ticker])
+    price_df.drop("Adj Close",axis=1,inplace=True)
+    print(price_df)
+    fig_.add_trace(go.Scatter(x=price_df.index.to_list(),
+                          y=price_df["Close"].to_list(),
+                          name=ticker,
+                          mode="lines", line=dict(width=2, color='white')))
+
+    st.plotly_chart(fig_, use_container_width=True)
+    fig_.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
+    bt = Backtest(price_df,SmaCross,commission=0.002)
+
+    bt.run()
+    st.bokeh_chart(bt.plot(open_browser=False))
+    """
+    HtmlFile = open("C:/Users/Administrateur/PycharmProjects/macro/SmaCross.html", 'r', encoding='utf-8')
+    source_code = HtmlFile.read()
+    components.html(source_code,width=800,height=900)
+
 url_tbills_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSGS-B.csv"
 url_tbills_2022 ="https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDPOSGS-B.csv"
 
@@ -28,3 +73,4 @@ plt.show()
 coupons_2y_df.plot()
 plt.title("Net positioning Coupons 2y ")
 plt.show()
+"""
