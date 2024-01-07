@@ -1,4 +1,5 @@
 backtesting
+bokeh==2.4.3
 altair==4.2.2
 appdirs==1.4.4
 attrs==23.1.0
