@@ -222,6 +222,7 @@ if ticker :
         if indicator2 == "rsi":
             strategy2 = strat.crossover(data_output["rsi" + period1_], 70, "above")
             data_output["signal2"] = strategy2
+            #h
         data_output["signal2"] = strategy2
         sum_signal = data_output["signal"]+data_output["signal2"]
         data_output["agg_signal"] = np.where(sum_signal>0,1,np.where(sum_signal==0,0,-1))
