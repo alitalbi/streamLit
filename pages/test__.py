@@ -109,11 +109,11 @@ class pnl:
                 index]
         return trade_log
 
-    def risk_metrics(self,trade_log):
-        trades = [trade for trade in range(1, len(trade_log) + 1)]
-        trade_log["price_std"] = ((trade_log["Close"] - trade_log["avg_price"]) ** 2).cumsum() / trades
-        trade_log["pnl_std"] = trade_log["pnl"].cumsum() / trades
-        self.volatility = trade_log.pnl_std
+    def risk_metrics(self,data_output):
+        trades = [trade for trade in range(1, len(data_output) + 1)]
+        data_output["price_std"] = ((data_output["Close"] - data_output["avg_price"]) ** 2).cumsum() / trades
+        data_output["pnl_std"] = data_output["pnl"].cumsum() / trades
+        self.volatility = data_output.pnl_std
 def import_data(url):
 
     """
@@ -257,32 +257,49 @@ if ticker :
    # data_output = data_output.loc[data_output.index >= pd.to_datetime(date_start_)]
     fig = make_subplots(rows=3,
                         cols=2,
-                        subplot_titles=('Signal','Pos', 'Pnl Per Trade','Acc_PnL','Total Pos','Price'))
+                        specs=[[{"secondary_y": True}, {"secondary_y": True}],
+                               [{"secondary_y": True}, {"secondary_y": True}],
+                                [{"secondary_y": True},{"secondary_y": True}]],
+                        subplot_titles=('Signal','Pos', 'Pnl Per Trade','Acc_PnL','Total Pos'))
     fig.add_trace(go.Scatter(x=data_output.index.to_list(),
                                y=data_output["agg_signal"].to_list(),
                                name="Strat1+2",
-                               mode="lines", line=dict(width=2, color='white')),row=1,col=1)
+                               mode="lines", line=dict(width=2, color='orange')),row=1,col=1,secondary_y=False)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["Close"],
+                             mode="lines", line=dict(width=2, color='white')), row=1, col=1, secondary_y=True)
     fig.add_trace(go.Bar(x=data_output.index.to_list(),
                                  y=data_output["q"].to_list(),
-                                 name="Pos per Trade",marker_color=data_output["color_pos"]),row=1,col=2)
+                                 name="Pos per Trade",marker_color=data_output["color_pos"]),row=1,col=2,secondary_y=False)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["Close"],
+                             mode="lines", line=dict(width=2, color='white')), row=1, col=2,secondary_y=True)
     fig.add_trace(go.Bar(x=data_output.index.to_list(),
                              y=data_output["pnl"],
                              name="PnL per Trade",marker_color=data_output["color_pnl"]), row=2, col=1)
     fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["Close"],
+                             mode="lines", line=dict(width=2, color='white')), row=2, col=1, secondary_y=True)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
                              y=data_output["pnl"].cumsum(),
                              name="total pnl",
-                             mode="lines", line=dict(width=2, color='white')), row=2, col=2)
-    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
-                             y=data_output["q"].cumsum(),
-                             name="total pos",
-                             mode="lines", line=dict(width=2, color='white')), row=3, col=1)
+                             mode="lines", line=dict(width=2, color='orange')), row=2, col=2,secondary_y=False)
     fig.add_trace(go.Scatter(x=data_output.index.to_list(),
                              y=data_output["Close"],
                              name="Close Price",
-                             mode="lines", line=dict(width=2, color='white')), row=3, col=2)
+                             mode="lines", line=dict(width=2, color='white')), row=2, col=2, secondary_y=True)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["q"].cumsum(),
+                             name="total pos",
+                             mode="lines", line=dict(width=2, color='orange')), row=3, col=1,secondary_y=False)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["Close"],
+                             name="Close Price",
+                             mode="lines", line=dict(width=2, color='white')), row=3, col=1,secondary_y=True)
     fig.update_layout(width=1200,height=900)
     fig.layout.xaxis.range = [date_start_, date_end]
     st.plotly_chart(fig, use_container_width=True)
+
 
     #bt = Backtest(price_df,SmaCross,commission=0.002)
 
