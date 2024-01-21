@@ -92,7 +92,28 @@ class Strategy:
             return np.where(series1 < series2, 1, -1)
         else:
             raise ValueError("Invalid direction. Use 'above' or 'below'.")
+class pnl:
+    def __init__(self):
+        self.pnl = None
+        self.volatility = None
 
+    def compute_pnl(self,trade_log):
+        trade_log["pq_acc"], trade_log["q_acc"] = abs((trade_log.Close * trade_log.q)).cumsum(), abs(
+            trade_log["q"]).cumsum()
+        trade_log["avg_price"] = trade_log["pq_acc"] / trade_log["q_acc"]
+        trade_log["pnl"] = np.zeros(len(trade_log))
+        for index in range(len(trade_log)):
+            if index == 0:
+                continue
+            trade_log["pnl"][index] = (trade_log["avg_price"][index - 1] - trade_log["Close"][index]) * trade_log.q[
+                index]
+        return trade_log
+
+    def risk_metrics(self,trade_log):
+        trades = [trade for trade in range(1, len(trade_log) + 1)]
+        trade_log["price_std"] = ((trade_log["Close"] - trade_log["avg_price"]) ** 2).cumsum() / trades
+        trade_log["pnl_std"] = trade_log["pnl"].cumsum() / trades
+        self.volatility = trade_log.pnl_std
 def import_data(url):
 
     """
@@ -141,8 +162,8 @@ mapping_dict_ticker  = {"UST Bond":"ZB=F",
                         "10y T-Note":"ZN=F"}
 
 fig_ = go.Figure()
-fig_2 = go.Figure()
-
+fig_signal = go.Figure()
+fig_pnl = go.Figure()
 c1, c2, c3 = st.columns(3)
 with c1:
     ticker = st.selectbox("Ticker", ("UST Bond", "2y T-Note", "5y T-Note", "10y T-Note"))
@@ -186,7 +207,8 @@ if ticker :
                               name=indicators+period,
                               mode="lines", line=dict(width=2, color='orange')))
     st.plotly_chart(fig_, use_container_width=True)
-
+    fig_.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
+    fig_.layout.xaxis.range = [date_start_, date_end]
     strat = Strategy()
     c1, c2,c3,c4 = st.columns(4)
     with c1:
@@ -203,51 +225,64 @@ if ticker :
         data_output["signal"] = strategy
     data_output["signal"] = strategy
 
+    print(":)")
 
 
-    add_strategy = st.button("Add",type="primary")
 
-    if add_strategy:
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            cross2 = st.selectbox("Strategy2", ("Crossover", ""))
-        with c2:
-            indicator2 = st.selectbox("Indicators2", ("sma", "ema", "hma", "rsi"))
-        with c3:
-            period1_ = st.selectbox("Period1_", ("14", "20", "50", "240"))
-        with c4:
-            period2_ = st.selectbox("Period2_", ("14", "20", "50", "240"), index=1)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        cross2 = st.selectbox("Strategy2", ("Crossover", ""))
+    with c2:
+        indicator2 = st.selectbox("Indicators2", ("sma", "ema", "hma", "rsi"))
+    with c3:
+        period1_ = st.selectbox("Period1_", ("14", "20", "50", "240"))
+    with c4:
+        period2_ = st.selectbox("Period2_", ("14", "20", "50", "240"), index=1)
 
-        strategy2 = strat.crossover(data_output[indicator2 + period1_], data_output[indicator2 + period2_], "above")
-        if indicator2 == "rsi":
-            strategy2 = strat.crossover(data_output["rsi" + period1_], 70, "above")
-            data_output["signal2"] = strategy2
-            #h
+    strategy2 = strat.crossover(data_output[indicator2 + period1_], data_output[indicator2 + period2_], "above")
+    if indicator2 == "rsi":
+        strategy2 = strat.crossover(data_output["rsi" + period1_], 70, "above")
         data_output["signal2"] = strategy2
-        sum_signal = data_output["signal"]+data_output["signal2"]
-        data_output["agg_signal"] = np.where(sum_signal>0,1,np.where(sum_signal==0,0,-1))
-       # data_output = data_output.loc[data_output.index >= pd.to_datetime(date_start_)]
-        fig_2.add_trace(go.Scatter(x=data_output.index.to_list(),
-                                   y=data_output["agg_signal"].to_list(),
-                                   name="Agg_Signal",
-                                   mode="lines", line=dict(width=2, color='white')))
-        st.plotly_chart(fig_2, use_container_width=True)
-        fig_2.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
-        fig_2.layout.xaxis.range = [date_start_, date_end]
-        print(date_start_,"date_start_")
-    else:
-       # data_output = data_output.loc[data_output.index >= pd.to_datetime(date_start_)]
-        fig_2.add_trace(go.Scatter(x=data_output.index.to_list(),
-                                  y=data_output["signal"].to_list(),
-                                  name="Signal",
-                                  mode="lines", line=dict(width=2, color='white')))
+        #h
+    data_output["signal2"] = strategy2
+    sum_signal = data_output["signal"]+data_output["signal2"]
+    data_output["agg_signal"] = np.where(sum_signal>0,1,np.where(sum_signal==0,0,-1))
+    data_output["q"] = data_output["agg_signal"] * (data_output["Volume"] * 10e-4).apply(lambda x: int(x))
 
-        st.plotly_chart(fig_2, use_container_width=True)
-        fig_.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
-        fig_2.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
-        fig_.layout.xaxis.range = [date_start_, date_end]
-        fig_2.layout.xaxis.range = [date_start_, date_end]
-        #bt = Backtest(price_df,SmaCross,commission=0.002)
+
+    computePnL = pnl()
+    data_output = computePnL.compute_pnl(data_output)
+   # data_output = data_output.loc[data_output.index >= pd.to_datetime(date_start_)]
+    fig = make_subplots(rows=3,
+                        cols=2,
+                        subplot_titles=('Signal','Pos', 'Pnl Per Trade','Acc_PnL','Total Pos','Price'))
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                               y=data_output["agg_signal"].to_list(),
+                               name="Strat1+2",
+                               mode="lines", line=dict(width=2, color='white')),row=1,col=1)
+    fig.add_trace(go.Bar(x=data_output.index.to_list(),
+                                 y=data_output["q"].to_list(),
+                                 name="Pos per Trade"),row=1,col=2)
+    fig.add_trace(go.Bar(x=data_output.index.to_list(),
+                             y=data_output["pnl"],
+                             name="PnL per Trade"), row=2, col=1)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["pnl"].cumsum(),
+                             name="total pnl",
+                             mode="lines", line=dict(width=2, color='orange')), row=2, col=2)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["q"].cumsum(),
+                             name="total pos",
+                             mode="lines", line=dict(width=2, color='orange')), row=3, col=1)
+    fig.add_trace(go.Scatter(x=data_output.index.to_list(),
+                             y=data_output["Close"],
+                             name="Close Price",
+                             mode="lines", line=dict(width=2, color='orange')), row=3, col=2)
+    fig.update_layout(width=1200,height=900)
+    fig.layout.xaxis.range = [date_start_, date_end]
+    st.plotly_chart(fig, use_container_width=True)
+
+    #bt = Backtest(price_df,SmaCross,commission=0.002)
 
     #bt.run()
     #st.bokeh_chart(bt.plot(open_browser=False))
