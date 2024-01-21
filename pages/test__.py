@@ -221,7 +221,7 @@ if ticker :
         period2 = st.selectbox("Period2", ("14", "20","50","240"),index=1)
     strategy = strat.crossover(data_output[indicator + period1], data_output[indicator + period2], "above")
     if indicator == "rsi":
-        strategy = strat.crossover(data_output["rsi"+period1],70,"above")
+        strategy = strat.crossover(data_output["rsi"+period1],50,"above")
         data_output["signal"] = strategy
     data_output["signal"] = strategy
 
