@@ -296,7 +296,7 @@ if ticker :
                              y=data_output["Close"],
                              name="Close Price",
                              mode="lines", line=dict(width=2, color='white')), row=3, col=1,secondary_y=True)
-    fig.update_layout(width=1200,height=900)
+    fig.update_layout(width=1200,height=900,showlegend=False)
     fig.layout.xaxis.range = [date_start_, date_end]
     st.plotly_chart(fig, use_container_width=True)
 
