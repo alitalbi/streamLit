@@ -252,6 +252,8 @@ if ticker :
 
     computePnL = pnl()
     data_output = computePnL.compute_pnl(data_output)
+    data_output["color_pnl"] = np.where(data_output["pnl"]<0, 'red', 'green')
+    data_output["color_pos"] = np.where(data_output["q"] < 0, 'red', 'green')
    # data_output = data_output.loc[data_output.index >= pd.to_datetime(date_start_)]
     fig = make_subplots(rows=3,
                         cols=2,
@@ -262,22 +264,22 @@ if ticker :
                                mode="lines", line=dict(width=2, color='white')),row=1,col=1)
     fig.add_trace(go.Bar(x=data_output.index.to_list(),
                                  y=data_output["q"].to_list(),
-                                 name="Pos per Trade"),row=1,col=2)
+                                 name="Pos per Trade",marker_color=data_output["color_pos"]),row=1,col=2)
     fig.add_trace(go.Bar(x=data_output.index.to_list(),
                              y=data_output["pnl"],
-                             name="PnL per Trade"), row=2, col=1)
+                             name="PnL per Trade",marker_color=data_output["color_pnl"]), row=2, col=1)
     fig.add_trace(go.Scatter(x=data_output.index.to_list(),
                              y=data_output["pnl"].cumsum(),
                              name="total pnl",
-                             mode="lines", line=dict(width=2, color='orange')), row=2, col=2)
+                             mode="lines", line=dict(width=2, color='white')), row=2, col=2)
     fig.add_trace(go.Scatter(x=data_output.index.to_list(),
                              y=data_output["q"].cumsum(),
                              name="total pos",
-                             mode="lines", line=dict(width=2, color='orange')), row=3, col=1)
+                             mode="lines", line=dict(width=2, color='white')), row=3, col=1)
     fig.add_trace(go.Scatter(x=data_output.index.to_list(),
                              y=data_output["Close"],
                              name="Close Price",
-                             mode="lines", line=dict(width=2, color='orange')), row=3, col=2)
+                             mode="lines", line=dict(width=2, color='white')), row=3, col=2)
     fig.update_layout(width=1200,height=900)
     fig.layout.xaxis.range = [date_start_, date_end]
     st.plotly_chart(fig, use_container_width=True)
