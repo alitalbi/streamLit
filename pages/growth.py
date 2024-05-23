@@ -6,7 +6,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 from datetime import datetime,timedelta
 import requests
-fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
+#fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
 
 st.set_page_config(page_title="growth")
@@ -142,7 +142,7 @@ nonfarm, nonfarm_10 = smooth_data("PAYEMS", date_start_converted, date_start2_co
 print("5")
 
 real_pers, real_pers_10 = smooth_data("W875RX1", date_start_converted, date_start2_converted, date_end_converted)
-
+print("hihi",date_start_converted)
 retail_sales, retail_sales_10 = smooth_data("RRSFS", date_start_converted, date_start2_converted, date_end_converted)
 
 employment_level, employment_level_10 = smooth_data("CE16OV", date_start_converted, date_start2_converted, date_end_converted)
