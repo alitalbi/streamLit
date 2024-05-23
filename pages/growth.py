@@ -167,7 +167,7 @@ url = 'https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTr
 response = requests.get(url)
 
 # Use pandas to read the downloaded Excel file from memory
-atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
+atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'],engine='openpyxl')
 print("ali")
 
 #atlanta_gdp_now["Forecast Date"] = atlanta_gdp_now["Forecast Date"].apply(lambda x:datetime.strftime(x,"%Y-%m-%d"))
