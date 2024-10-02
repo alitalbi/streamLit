@@ -19,7 +19,6 @@ print(type(date_start))
 date_start2 = datetime.strptime("2004-01-01","%Y-%m-%d").date()
 print(type(date_start2))
 date_end = st.date_input("End date:", pd.Timestamp(datetime.now().strftime("%Y-%m-%d")))
-
 def score_table(index, data_, data_10):
     score_table = pd.DataFrame.from_dict({"trend vs history ": 1 if data_.iloc[-1, 0] > data_10.iloc[-1, 0] else 0,
                                           "growth": 1 if data_.iloc[-1, 0] > 0 else 0,
@@ -165,10 +164,11 @@ composite_growth_10 = pd.DataFrame(composite_growth_10.mean(axis=1))
 composite_growth_10.columns = ["10 yr average"]
 url = 'https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx'
 response = requests.get(url)
-
+print("response",response)
 # Use pandas to read the downloaded Excel file from memory
 atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
 print("ali")
+print(atlanta_gdp_now)
 
 #atlanta_gdp_now["Forecast Date"] = atlanta_gdp_now["Forecast Date"].apply(lambda x:datetime.strftime(x,"%Y-%m-%d"))
 atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
@@ -177,14 +177,20 @@ atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
 #print("atlanta index date type : ",type(a.index))
 
 #composite_growth.to_csv("/Users/talbi/Downloads/composite_growth.csv")
+year = str(date_start.year)
+month = str(date_start.month)
+month = month if len(month)==2 else "0"+month
+
+print(year,month,"yearèmonth")
 fig_ = go.Figure()
-
-
-
-cli = pd.read_csv("https://stats.oecd.org/sdmx-json/data/DP_LIVE/USA.CLI.AMPLITUD.LTRENDIDX.M/OECD?contentType=csv&detail=code&separator=comma&csv-lang=en&startPeriod=1955-01&endPeriod=2023-03",index_col=["TIME"])[['Value']]
+cli = pd.read_csv("https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,/.M.LI...AA...H?startPeriod="+year+"-"+month+"&dimensionAtObservation=AllDimensions&format=csvfilewithlabels")
+cli = cli.loc[cli["REF_AREA"]=="USA"][["TIME_PERIOD","OBS_VALUE"]]
+cli.sort_values(by="TIME_PERIOD",inplace=True)
+cli.set_index("TIME_PERIOD",inplace=True,drop=True)
+#cli["TIME_PERIOD"] = cli["TIME_PERIOD"].apply(lambda x:datetime.strptime())
+print(cli,"yearèmonth")
 cli = (cli - cli.mean())/(cli.std()*100)
 
-print(1)
 # ploting the data
 # composite_growth_10 = 100 * (composite_growth.iloc[:, 0].rolling(10).mean().pct_change())
 fig_.add_trace(go.Scatter(x=cli.index.to_list(), y=cli.iloc[:,0],
