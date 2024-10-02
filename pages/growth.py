@@ -185,7 +185,7 @@ print(year,month,"yearèmonth")
 fig_ = go.Figure()
 cli = pd.read_csv("https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,/.M.LI...AA...H?startPeriod="+year+"-"+month+"&dimensionAtObservation=AllDimensions&format=csvfilewithlabels")
 cli = cli.loc[cli["REF_AREA"]=="USA"][["TIME_PERIOD","OBS_VALUE"]]
-cli.sort_values(by="TIME_PERIOD",inplace=True)
+cli.sort_values(by="TIME_PERIOD",ascending=False,inplace=True)
 cli.set_index("TIME_PERIOD",inplace=True,drop=True)
 #cli["TIME_PERIOD"] = cli["TIME_PERIOD"].apply(lambda x:datetime.strptime())
 print(cli,"yearèmonth")
