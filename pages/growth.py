@@ -295,7 +295,7 @@ fig_cyclical_trends.update_layout(  # customize font and legend orientation & po
         family="Rockwell",
         size=18),
     legend=dict(
-        title=None, orientation="h", y=1.02, yanchor="bottom", x=0.5, xanchor="center"
+        title="Growth Indicators", orientation="h", y=0.9, yanchor="top", x=0.5, xanchor="center"
     )
 )
 fig_cyclical_trends.layout.sliders = [dict(visible=True)]
