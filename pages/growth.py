@@ -6,7 +6,12 @@ from plotly.subplots import make_subplots
 import numpy as np
 from datetime import datetime,timedelta
 import requests
+import ssl
+import urllib3
+import io
 #fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
+
+
 
 
 st.set_page_config(page_title="growth")

@@ -13,7 +13,7 @@ click==8.1.3
 cmake==3.26.3
 colorama==0.4.6
 contourpy==1.0.7
-cryptography==40.0.2
+cryptography==36.0.2
 cycler==0.11.0
 Cython==0.29.34
 dash==2.9.3
