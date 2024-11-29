@@ -82,7 +82,7 @@ itot_govt_3m = momentum("3m","ITOT","GOVT")
 gld_tlt_3m = momentum("3m","GLD","TLT")
 kre_spy_3m = momentum("3m","KRE","SPY")
 #je veux traduire le risk on par une valeur pos, donc ce qui est plus cyclique et risk on au numérateur
-
+st.write(spy_shy_1w,spy_ief_1w)
 concat_data_1w = reduce(lambda left,right:pd.merge(left,right,left_index=True,right_index=True),[spy_shy_1w,spy_ief_1w,spy_tlt_1w,spy_xly_1w,qqq_tlt_1w,
                                                                                 rcd_rhs_1w,sox_fxy_1w,xlp_xly_1w,spy_pscd_1w,spy_iwm_1w,
                                                                                 qqq_iwm_1w,itot_govt_1w,gld_tlt_1w,kre_spy_1w])
