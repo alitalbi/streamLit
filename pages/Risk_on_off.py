@@ -21,20 +21,24 @@ def momentum(period,etf1,etf2):
     data_etf2 = pd.DataFrame(
         yf.download(etf2, date_start, date_end, period=frequency))
 
-    ratio_etfs = data_etf1/data_etf2
+    ratio_etfs = data_etf1['Close'][etf1]/data_etf2['Close'][etf2]
+  
     if period == "1w":
-        ratio_etfs[etf1+"/"+etf2] = ratio_etfs["Close"].diff(5)
+        ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(5)
 
     elif period == "1m":
-        ratio_etfs[etf1+"/"+etf2] = ratio_etfs["Close"].diff(22)
+        ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(22)
 
     elif period == "3m":
-        ratio_etfs[etf1+"/"+etf2] = ratio_etfs["Close"].diff(66)
+        ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(66)
 
     ratio_etfs.dropna(inplace=True)
-    return ratio_etfs[[etf1+"/"+etf2]]
+    final_df = ratio_etfs[[etf1+"/"+etf2]][0].to_frame()
+    final_df.columns = [etf1+"/"+etf2]
+    return final_df
 
 #1w
+
 spy_shy_1w = momentum("1w","SPY","SHY")
 spy_ief_1w = momentum("1w","SPY","IEF")
 spy_tlt_1w = momentum("1w","SPY","TLT")
@@ -98,7 +102,7 @@ last_momentum_1m = pd.DataFrame(concat_data_1m.iloc[len(concat_data_1m)-1,:])
 last_momentum_3m = pd.DataFrame(concat_data_3m.iloc[len(concat_data_3m)-1,:])
 
 concat_momentum = reduce(lambda left,right : pd.merge(left,right,left_index=True,right_index=True),[last_momentum_1w,last_momentum_1m,last_momentum_3m])
-
+st.write(spy_shy_1w,concat_data_1w)
 # Add a row with the sum of each column
 concat_momentum.loc['aggregate_ratios'] = concat_momentum.mean()
 
@@ -143,7 +147,7 @@ styled_df = styled_df.set_properties(subset=pd.IndexSlice["aggregate_ratios", :]
 styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"], **{'color': '', 'background-color': ''})
 
 
-# Display the styled DataFrame in Streamlit
+
 st.dataframe(styled_df,width=1100,height=535)
 fig_1w = px.line(concat_data_1w)
 fig_1w.update_layout(title_text="Momentum 1w")
