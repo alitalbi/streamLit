@@ -20,8 +20,8 @@ def momentum(period,etf1,etf2):
         yf.download(etf1, date_start, date_end, period=frequency))
     data_etf2 = pd.DataFrame(
         yf.download(etf2, date_start, date_end, period=frequency))
-    st.write(data_etf1)
-    ratio_etfs = data_etf1['Close'][etf1]/data_etf2['Close'][etf2]
+
+    ratio_etfs = data_etf1['Close']/data_etf2['Close']
   
     if period == "1w":
         ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(5)
