@@ -101,7 +101,6 @@ last_momentum_1m = pd.DataFrame(concat_data_1m.iloc[len(concat_data_1m)-1,:])
 last_momentum_3m = pd.DataFrame(concat_data_3m.iloc[len(concat_data_3m)-1,:])
 
 concat_momentum = reduce(lambda left,right : pd.merge(left,right,left_index=True,right_index=True),[last_momentum_1w,last_momentum_1m,last_momentum_3m])
-st.write(spy_shy_1w,concat_data_1w)
 # Add a row with the sum of each column
 concat_momentum.loc['aggregate_ratios'] = concat_momentum.mean()
 
@@ -148,14 +147,14 @@ styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"
 
 
 st.dataframe(styled_df,width=1100,height=535)
-fig_1w = px.line(concat_data_1w)
-fig_1w.update_layout(title_text="Momentum 1w")
+# fig_1w = px.line(concat_data_1w)
+# fig_1w.update_layout(title_text="Momentum 1w")
 
-fig_1m = px.line(concat_data_1m)
-fig_1m.update_layout(title_text="Momentum 1m")
+# fig_1m = px.line(concat_data_1m)
+# fig_1m.update_layout(title_text="Momentum 1m")
 
-fig_3m = px.line(concat_data_3m)
-fig_3m.update_layout(title_text="Momentum 3m")
-st.plotly_chart(fig_1w)
-st.plotly_chart(fig_1m)
-st.plotly_chart(fig_3m)
+# fig_3m = px.line(concat_data_3m)
+# fig_3m.update_layout(title_text="Momentum 3m")
+# st.plotly_chart(fig_1w)
+# st.plotly_chart(fig_1m)
+# st.plotly_chart(fig_3m)
