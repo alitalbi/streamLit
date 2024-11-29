@@ -96,7 +96,7 @@ def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
     # Calculate the smoothed average
     data_["average"] = data_.rolling(66).mean()
 
-    data_["14d_growth_rate"] = ((data_["Close"].iloc[:,0] / data_["average"]) ** (252 / 66) - 1) * 100
+    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 66) - 1) * 100
   
     data_["28d_ma"] = data_["Close"].rolling(28).mean()
     data_["100d_ma"] = data_["Close"].rolling(100).mean()
