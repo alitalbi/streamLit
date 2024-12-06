@@ -78,7 +78,6 @@ avg_returns = avg_returns[["mtd","2m","3m","6m","9m","12m","18m"]]
 
 excess_return = round(avg_returns.loc[sectors,:] - avg_returns.loc[broad_market,:],2)
 excess_return.reset_index(inplace=True)
-st.write(excess_return)
 excess_return["sector"] = excess_return["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
 excess_return = excess_return[["Ticker","sector","mtd","3m","6m","12m","18m"]]
 avg_returns.reset_index(inplace=True)
