@@ -64,6 +64,7 @@ spdr_sector_etfs = {
 sectors = list(spdr_sector_etfs.values())
 sectors.remove("SCHB")
 broad_market = "SCHB"
+st.write(yf.download(list(spdr_sector_etfs.values()), start="2022-01-01", end="2024-12-05", interval="1d"))
 etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2022-01-01", end="2024-12-05", interval="1d")["Adj Close"]
 st.write(etf_prices)
 etf_returns = round(100*(etf_prices.resample("M").last()/etf_prices.resample("M").first() - 1),2).T
