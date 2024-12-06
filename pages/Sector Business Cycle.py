@@ -9,9 +9,6 @@ import yfinance as yf
 from functools import reduce
 import plotly.express as px
 import time
-import scipy
-from scipy import stats
-
 st.set_page_config(page_title="Business Cycle",layout="wide")
 
 def hit_ratio(period):
