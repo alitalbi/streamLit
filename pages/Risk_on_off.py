@@ -224,7 +224,7 @@ ETF_ratios = concat_momentum.reset_index()
 st.dataframe(styled_df.format({col:"{:.2f}" for col in concat_momentum.columns}),width=1300)
 col1,col2 = st.columns(2,gap="small")
 with col1:
-    selection_ratios = st.multiselect("Ratios",options=ETF_ratios["Description"][:len(ETF_ratios)-1])
+    selection_ratios = st.selectbox("Ratios",options=ETF_ratios["Description"][:len(ETF_ratios)-1])
 with col2:
     st.markdown("""<h4>Period</h4>""",unsafe_allow_html=True)
     col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
@@ -254,8 +254,8 @@ elif period_18m:
 elif period_all:
     start = date_start
 if len(selection_ratios) != 0:
-    etf1=etf_pairs[selection_ratios[0]][0]
-    etf2 = etf_pairs[selection_ratios[0]][1]
+    etf1=etf_pairs[selection_ratios][0]
+    etf2 = etf_pairs[selection_ratios][1]
 
     data_etf1 = pd.DataFrame(
                 yf.download(etf1, start, date_end, period=frequency))["Close"]
