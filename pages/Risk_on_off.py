@@ -77,19 +77,6 @@ st.markdown("""
         <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
     </div>
 """, unsafe_allow_html=True)
-
-
-# Render the navigation bar
-st.markdown("""
-    <div class="top-nav">
-        <a href="/" target="_self">Home</a>
-        <a href="/growth" target="_self">Growth</a>
-        <a href="/Inflation_outlook" target="_self">Inflation</a>
-        <a href="/Risk_on_off" target="_self">Risk On/Off</a>
-        <a href="/Sector_Business_Cycle" target="_self">Business Cycle</a>
-        <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
-    </div>
-""", unsafe_allow_html=True)
 frequency = "1d"
 
 date_start = "2010-01-01"
