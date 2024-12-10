@@ -9,6 +9,9 @@ import yfinance as yf
 from functools import reduce
 import plotly.express as px
 import time
+import scipy
+from scipy import stats
+
 st.set_page_config(page_title="Business Cycle",layout="wide")
 
 def hit_ratio(etf_returns,period):
@@ -182,7 +185,7 @@ sector_roadmap = {"Expansion":{"++":["Financials","Technology"],
 sectors = list(spdr_sector_etfs.values())
 sectors.remove("SCHB")
 broad_market = "SCHB"
-etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2022-01-01", end="2024-12-05", interval="1d")["Adj Close"]
+etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2002-01-01", end=datetime.today().strftime("%Y-%m-%d"), interval="1d")["Adj Close"]
 ### avg saily dev ###------------------------------------
 avg_daily = (etf_prices.pct_change(1).rolling(22).mean()*100)
 
@@ -315,104 +318,29 @@ indicator_18m = indicator_18m.astype('float64')
 
 agg_z = pd.concat([indicator_mtd.loc["Agg Score MtD",:],indicator_3m.loc["Agg Score 3m",:],indicator_6m.loc["Agg Score 6m",:],indicator_12m.loc["Agg Score 12m",:],indicator_18m.loc["Agg Score 18m",:]],axis=1).T
 
-st.markdown("### Sector Scores for Business Cycles")
-col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
 
-with col1:
-    agg_z_check = st.checkbox("All periods")
-with col2:
-    agg_z_check_3m = st.checkbox("3m")
-with col3:
-    agg_z_check_6m = st.checkbox("6m")
-with col4:
-    agg_z_check_12m = st.checkbox("12m")
-with col5:
-    agg_z_check_18m = st.checkbox("18m")
-periods = ["Agg Score MtD"]
-if agg_z_check:
-    periods = list(agg_z.index)
-if agg_z_check_3m:
-    periods.append("Agg Score 3m")
-if agg_z_check_6m:
-    periods.append("Agg Score 6m")
-if agg_z_check_12m:
-    periods.append("Agg Score 12m")
-if agg_z_check_18m:
-    periods.append("Agg Score 18m")
-st.dataframe(agg_z.loc[periods,:].style.apply(highlight_values,axis=None).format({col:"{:.2f}" for col in indicator_18m.columns}),width=1400)
-period_options = ["MtD","3m","6m","12m","18m"]
-roadmap_period = st.selectbox("Period",options=period_options)
-
-# sub_market_cycle = []
-# for period in period_options:
-#     sub_market_cycle.append(agg_market_cycles(period))
-# agg_market_cycle = pd.concat(sub_market_cycle)[::-1]
-# agg_market_cycle.fillna(0,inplace = True)
 agg_market_cycle_df = agg_market_cycle_df.loc[:,["Recession","Slowdown","Recovery","Expansion"]]
 agg_market_cycle_df["Total %"] = agg_market_cycle_df.sum(axis=1)
 
 agg_market_cycle_df.fillna(0,inplace=True)
 
-
-# fig = go.Figure()
-# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
-#                                          y=agg_market_cycle_df['Expansion'], line=dict(width=2,color="rgba(0, 255, 0,0.8)"),
-#                                          mode="lines",
-#                                          name="Expansion", showlegend=True,hoverinfo="x",stackgroup="one",fill="tonexty", ))
-# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
-#                                          y=agg_market_cycle_df['Slowdown'], line=dict(width=2,color="orange"),
-#                                          mode="lines",
-#                                          name="Slowdown", showlegend=True,hoverinfo="x+y",stackgroup="two"))
-# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
-#                                          y=agg_market_cycle_df['Recovery'], line=dict(width=2,color="rgba(0, 175, 0,0.5)"),
-#                                          mode="lines",
-#                                          name="Recovery", showlegend=True,hoverinfo="x+y",stackgroup="three"))
-# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
-#                                          y=agg_market_cycle_df['Recession'], line=dict(width=2,color="red"),
-#                                          mode="lines",
-#                                          name="Recession", showlegend=True,hoverinfo="x+y",stackgroup="four"))
-
-sorted_zscores = (agg_z.loc[["Agg Score "+roadmap_period],:].T).sort_values(by="Agg Score " +roadmap_period,ascending=False)
-sector_ranking = list(sorted_zscores.head(3).index)+list(sorted_zscores.tail(3).index)
-# Sample data for sectors and rankings
-cycle_mapping = []
-all_cycles = []
-
-
-for index in range(len(sector_ranking)):
-    cycle_choice = []
-    for cycle in ["Recession","Slowdown","Recovery","Expansion"]:
-        if index <=2:
-            if sector_ranking[index] in sector_roadmap[cycle]["++"]:
-                cycle_choice.append(cycle)
-                all_cycles.append(cycle)
-            if sector_ranking[index] in sector_roadmap[cycle]["+"]:
-                cycle_choice.append(cycle)
-                all_cycles.append(cycle)
-        else:
-            if sector_ranking[index] in sector_roadmap[cycle]["-"]:
-                cycle_choice.append(cycle)
-                all_cycles.append(cycle)
-            if sector_ranking[index] in sector_roadmap[cycle]["--"]:
-                cycle_choice.append(cycle)
-                all_cycles.append(cycle)
-    cycle_mapping.append(cycle_choice)
-cycle_count_dict = {cycle:[round(all_cycles.count(cycle)/len(all_cycles),2)] for cycle in list(set(all_cycles))}
-all_cycles_count = pd.DataFrame(cycle_count_dict)
-all_cycles_count.index = ["Descriptive Proba %"]
-
-ranking = ["++","","+","-","","--"]
-roadmap_final = pd.DataFrame({"":ranking,"MtD":sector_ranking,"Cycle":cycle_mapping})
-col1,col2 = st.columns(2,gap="small")
-with col1:
-    st.markdown("### Sector Road Map")
-    st.dataframe(roadmap_final.style.apply(ranking_color,axis=None),hide_index=True)
+st.markdown(
+    """
+    <h3 style="text-align: center;">Sector Scores for Business Cycles</h3>
+    """,
+    unsafe_allow_html=True
+)
+col1,col2,col3 = st.columns(3,gap="small")
 with col2:
-    st.markdown("### Market Cycle")
-    st.write(all_cycles_count)
-# st.markdown("### MtD")
-cycle_graph_choice = st.selectbox("Graph type : ",options=["Stacked Bar","Line Areas"])
+    use_custom_date = st.expander("Custom Graph",expanded=False)
+    with use_custom_date:
+        cycle_graph_choice = st.selectbox("Graph type : ",options=["Stacked Bar","Line Areas"])
+        start_date = st.date_input("Start date:", pd.Timestamp("2024-01-01"))  
+        end_date = st.date_input("End date:", pd.Timestamp(datetime.today()))  
+agg_market_cycle_df.index = pd.Series(agg_market_cycle_df.index).apply(lambda x:x.tz_localize(None))
+agg_market_cycle_df = agg_market_cycle_df.loc[(agg_market_cycle_df.index > pd.Timestamp(start_date)) & (agg_market_cycle_df.index <= pd.Timestamp(end_date))]
 fig = go.Figure()
+
 if cycle_graph_choice == "Stacked Bar": 
 # Add traces for each category
     fig.add_trace(go.Bar(
@@ -474,7 +402,7 @@ else:
         ))
 # st.write(agg_market_cycle_df)
 fig.update_layout(  # customize font and legend orientation & position
-    yaxis=dict(tickformat=".1%"),
+    yaxis=dict(tickformat=".1%",title="Descriptive Proba "),
     title_font_family="Arial Black",
     title={
             'text' : "Aggregate Market Cycle",
@@ -489,6 +417,82 @@ fig.update_layout(  # customize font and legend orientation & position
     ))
 
 st.plotly_chart(fig)
+
+col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
+
+with col1:
+    agg_z_check = st.checkbox("All periods")
+with col2:
+    agg_z_check_3m = st.checkbox("3m")
+with col3:
+    agg_z_check_6m = st.checkbox("6m")
+with col4:
+    agg_z_check_12m = st.checkbox("12m")
+with col5:
+    agg_z_check_18m = st.checkbox("18m")
+periods = ["Agg Score MtD"]
+if agg_z_check:
+    periods = list(agg_z.index)
+if agg_z_check_3m:
+    periods.append("Agg Score 3m")
+if agg_z_check_6m:
+    periods.append("Agg Score 6m")
+if agg_z_check_12m:
+    periods.append("Agg Score 12m")
+if agg_z_check_18m:
+    periods.append("Agg Score 18m")
+st.dataframe(agg_z.loc[periods,:].style.apply(highlight_values,axis=None).format({col:"{:.2f}" for col in indicator_18m.columns}),width=1400)
+period_options = ["MtD","3m","6m","12m","18m"]
+roadmap_period = st.selectbox("Period",options=period_options)
+
+# sub_market_cycle = []
+# for period in period_options:
+#     sub_market_cycle.append(agg_market_cycles(period))
+# agg_market_cycle = pd.concat(sub_market_cycle)[::-1]
+# agg_market_cycle.fillna(0,inplace = True)
+
+sorted_zscores = (agg_z.loc[["Agg Score "+roadmap_period],:].T).sort_values(by="Agg Score " +roadmap_period,ascending=False)
+sector_ranking = list(sorted_zscores.head(3).index)+list(sorted_zscores.tail(3).index)
+# Sample data for sectors and rankings
+cycle_mapping = []
+all_cycles = []
+
+
+for index in range(len(sector_ranking)):
+    cycle_choice = []
+    for cycle in ["Recession","Slowdown","Recovery","Expansion"]:
+        if index <=2:
+            if sector_ranking[index] in sector_roadmap[cycle]["++"]:
+                cycle_choice.append(cycle)
+                all_cycles.append(cycle)
+            if sector_ranking[index] in sector_roadmap[cycle]["+"]:
+                cycle_choice.append(cycle)
+                all_cycles.append(cycle)
+        else:
+            if sector_ranking[index] in sector_roadmap[cycle]["-"]:
+                cycle_choice.append(cycle)
+                all_cycles.append(cycle)
+            if sector_ranking[index] in sector_roadmap[cycle]["--"]:
+                cycle_choice.append(cycle)
+                all_cycles.append(cycle)
+    cycle_mapping.append(cycle_choice)
+cycle_count_dict = {cycle:[round(all_cycles.count(cycle)/len(all_cycles),2)] for cycle in list(set(all_cycles))}
+all_cycles_count = pd.DataFrame(cycle_count_dict)
+all_cycles_count.index = ["Descriptive Proba %"]
+
+ranking = ["++","","+","-","","--"]
+roadmap_final = pd.DataFrame({"":ranking,"MtD":sector_ranking,"Cycle":cycle_mapping})
+col1,col2 = st.columns(2,gap="small")
+with col1:
+    st.markdown("### Sector Road Map")
+    st.dataframe(roadmap_final.style.apply(ranking_color,axis=None),hide_index=True)
+with col2:
+    st.markdown("### Market Cycle")
+    st.write(all_cycles_count)
+# st.markdown("### MtD")
+
+
+
 st.dataframe(styled_indicator_mtd.format({col:"{:.1f}" for col in indicator_3m.columns}),width=1400)
 excess_check = st.checkbox("Display Avg Monthly Excess Return")
 short_term = st.expander("Short Term 3-6m")
