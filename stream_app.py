@@ -1,308 +1,126 @@
 import streamlit as st
-import pandas as pd
-import yfinance as yf
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from datetime import datetime
 
-
-# Set page configuration
-st.set_page_config(page_title="Eco-Framework Dashboard", layout="wide", initial_sidebar_state="collapsed")
-
-# Custom CSS for styling
+# Custom CSS to style the top menu and the page layout
 st.markdown("""
     <style>
-        body {
-            background-color: #f4f4f4;
-        }
-        .center-title {
-            text-align: center;
-            font-size: 2.5em;
-            font-family: 'Arial', sans-serif;
-            color: #333333;
-            margin-bottom: 20px;
-        }
-        .card-container {
-            display: flex;
-            justify-content: center;
-            gap: 2em;
-            margin-top: 50px;
-        }
-        .card {
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 250px;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-        }
-        .card-title {
-            font-size: 1.5em;
-            color: #444444;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        .card-description {
-            font-size: 1em;
-            color: #666666;
-        }
+    
+    /* Home page card styling */
+    .stButton > button {
+        background-color: #3B3B3B;
+        color: white;
+        font-size: 14px;
+        border-radius: 10px;
+        padding: 20px;
+        height: auto;
+        width: auto;
+        text-align: center;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    .stButton:hover > button {
+        background-color: #4C4C4C;
+    }
+
+    .section-title {
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 30px;
+        font-weight: bold;
+        color: #FFFFFF;
+    }
+
+    .card-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+    .card {
+        background-color: #4A4A4A;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 10px;
+        width: 140px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        background-color: #5A5A5A;
+        cursor: pointer;
+    }
+    .card h4 {
+        color: white;
+        font-size: 16px;
+    }
+    .card p {
+        color: #9A9A9A;
+        font-size: 14px;
+    }
+    .card-icon {
+        font-size: 24px;
+        color: white;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Main title
-st.markdown("<div class='center-title'>Welcome to the Eco-Framework Dashboard</div>", unsafe_allow_html=True)
 
-# Card container
-st.markdown("""
-    <div class="card-container">
-        <div class="card" onclick="window.location.href='/Growth'">
-            <div class="card-title">Growth</div>
-            <div class="card-description">Understand the dynamics of economic growth.</div>
-        </div>
-        <div class="card" onclick="window.location.href='/Inflation'">
-            <div class="card-title">Inflation</div>
-            <div class="card-description">Analyze price trends and inflation rates.</div>
-        </div>
-        <div class="card" onclick="window.location.href='/RiskOnOff'">
-            <div class="card-title">Risk On/Off</div>
-            <div class="card-description">Monitor market risk sentiment.</div>
-        </div>
-        <div class="card" onclick="window.location.href='/BusinessCycle'">
-            <div class="card-title">Business Cycle</div>
-            <div class="card-description">Explore phases of economic cycles.</div>
-        </div>
+# Welcome message with custom title
+st.markdown("<h1 style='text-align: center; color: #FFFFFF;'>Tic Tak Macro</h1>", unsafe_allow_html=True)
+
+# Cards section with the navigation links for each page
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    st.markdown("""
+    <div class='card'>
+        <a href='/growth' style='color: white; text-decoration: none;'>
+            <div class="card-icon">📈</div>
+            <h4>Growth</h4>
+            <p>Understand the dynamics of economic growth.</p>
+        </a>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# st.set_page_config(layout="wide")
+with col2:
+    st.markdown("""
+    <div class='card'>
+        <a href='/inflation' style='color: white; text-decoration: none;'>
+            <div class="card-icon">💸</div>
+            <h4>Inflation</h4>
+            <p>Analyze price trends and inflation rates.</p>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 
-# def import_data(url):
-#     df = pd.read_csv(url)
-#     df.set_index('As Of Date', inplace=True)
-#     df.drop(['Time Series'], axis=1, inplace=True)
-#     return df
+with col3:
+    st.markdown("""
+    <div class='card'>
+        <a href='/riskonoff' style='color: white; text-decoration: none;'>
+            <div class="card-icon">⚖️</div>
+            <h4>Risk On/Off</h4>
+            <p>Monitor market risk sentiment.</p>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 
-# #urls
-# url_tbills_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSGS-B.csv"
-# url_tbills_2022 ="https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDPOSGS-B.csv"
+with col4:
+    st.markdown("""
+    <div class='card'>
+        <a href='/businesscycle' style='color: white; text-decoration: none;'>
+            <div class="card-icon">🔄</div>
+            <h4>Business Cycle</h4>
+            <p>Explore phases of economic cycles.</p>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 
-# url_coupons_2y_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSGSC-L2.csv"
-# url_coupons_2y_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSGSC-L2.csv"
-
-# url_commercial_paper_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSCSCP.csv"
-# url_commercial_paper_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDPOSCSCP.csv"
-
-# url_ig_bonds_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSCSBND-G13.csv"
-# url_ig_bonds_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDPOSCSBND-G13.csv"
-
-# url_below_ig_bonds_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDPOSCSBND-BELG13.csv"
-# url_below_ig_bonds_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDPOSCSBND-BELG13.csv"
-
-# url_transactions_tbill_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDTRGS-EXTB.csv"
-# url_transactions_tbill_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDTRGS-EXTB.csv"
-
-# url_transactions_coupons_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDTRGSC-L2.csv"
-# url_transactions_coupons_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDTRGSC-L2.csv"
-
-# url_transactions_IDB_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2015/timeseries/PDGSIDBEXT.csv"
-# url_transactions_IDB_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDGSIDBEXT.csv"
-
-# url_transactions_others_2015 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDGSWOEXT.csv"
-# url_transactions_others_2022 = "https://markets.newyorkfed.org/api/pd/get/SBN2022/timeseries/PDGSWOEXT.csv"
-
-# #import data
-# tbills_2015 = import_data(url_tbills_2015)
-# tbills_2022 = import_data(url_tbills_2022)
-
-# coupons_2y_2015 = import_data(url_coupons_2y_2015)
-# coupons_2y_2022 = import_data(url_coupons_2y_2022)
-
-# commercial_paper_2015 = import_data(url_commercial_paper_2015)
-# commercial_paper_2022 = import_data(url_commercial_paper_2022)
-
-# ig_bonds_2015 = import_data(url_ig_bonds_2015)
-# ig_bonds_2022 = import_data(url_ig_bonds_2022)
-
-# below_ig_bonds_2015 = import_data(url_below_ig_bonds_2015)
-# below_ig_bonds_2022 = import_data(url_below_ig_bonds_2022)
-
-# transactions_tbills_2015 = import_data(url_transactions_tbill_2015)
-# transactions_tbills_2022 = import_data(url_transactions_tbill_2022)
-
-# transactions_coupons_2015 = import_data(url_transactions_coupons_2015)
-# transactions_coupons_2022 = import_data(url_transactions_coupons_2022)
-
-# transactions_IDB_2015 = import_data(url_transactions_IDB_2015)
-# transactions_IDB_2022 = import_data(url_transactions_IDB_2022)
-
-# transactions_others_2015 = import_data(url_transactions_others_2015)
-# transactions_others_2022 = import_data(url_transactions_others_2022)
-
-# #dfs
-
-# #US treasury
-# tbills_df = pd.concat([tbills_2015,tbills_2022])
-# coupons_2y_df = pd.concat([coupons_2y_2015,coupons_2y_2022])
-# #Corporate
-# commercial_paper_df = pd.concat([commercial_paper_2015,commercial_paper_2022])
-# ig_bonds_df = pd.concat([ig_bonds_2015,ig_bonds_2022])
-# below_ig_bonds_df = pd.concat([below_ig_bonds_2015,below_ig_bonds_2022])
-# transactions_tbills_df = pd.concat([transactions_tbills_2015,transactions_tbills_2022])
-# transactions_coupons_df = pd.concat([transactions_coupons_2015,transactions_coupons_2022])
-# transactions_IDB_df = pd.concat([transactions_IDB_2015,transactions_IDB_2022])
-# transactions_others_df = pd.concat([transactions_others_2015,transactions_others_2022])
-# print("2222",transactions_IDB_df,transactions_others_df)
-
-# st.title(" Primary Dealer Statistics from the FED of New York ")
-# st.title("Net Positions")
-# # Create two columns
-# col1, col2 = st.columns(2)
-
-
-# option_treasury = col1.selectbox('US Treasury (Excluding TIPS)', ['T-Bills', 'Coupons'])
-# if option_treasury == 'T-Bills':
-#     with col1:
-#         fig_bills = go.Figure()
-#         fig_bills.add_trace(go.Scatter(x=tbills_df.index.to_list(), y=tbills_df.iloc[:,0],
-#                                  mode="lines", line=dict(width=2)))
-#         fig_bills.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "T-Bills (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig_bills, use_container_width=True)
-
-# elif option_treasury == 'Coupons':
-#     with col1:
-#         fig_coupons = go.Figure()
-#         fig_coupons.add_trace(go.Scatter(x=coupons_2y_df.index.to_list(), y=coupons_2y_df.iloc[:,0],
-#                                  mode="lines", line=dict(width=2)))
-#         fig_coupons.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "Coupons <2 year (in millions) ",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig_coupons, use_container_width=True)
-
-# option_corpo = col2.selectbox('Corporate', ['Commercial Paper', 'IG bonds, notes & debentures','Below IG bonds, notes & debentures'])
-# if option_corpo == 'Commercial Paper':
-#     with col2:
-#         fig = go.Figure()
-#         fig.add_trace(go.Scatter(x=commercial_paper_df.index.to_list(), y=commercial_paper_df.iloc[:,0],
-#                                  mode="lines", line=dict(width=2)))
-#         fig.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "Commercial Paper (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig, use_container_width=True)
-
-# elif option_corpo == 'IG bonds, notes & debentures':
-#     with col2:
-#         fig_coupons = go.Figure()
-#         fig_coupons.add_trace(go.Scatter(x=ig_bonds_df.index.to_list(), y=ig_bonds_df.iloc[:,0],
-#                                  mode="lines", line=dict(width=2)))
-#         fig_coupons.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "IG bonds, notes & debentures <= 13 months (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig_coupons, use_container_width=True)
-
-# elif option_corpo == 'Below IG bonds, notes & debentures':
-#     with col2:
-#         fig_coupons = go.Figure()
-#         fig_coupons.add_trace(go.Scatter(x=below_ig_bonds_df.index.to_list(), y=below_ig_bonds_df.iloc[:,0],
-#                                  mode="lines", line=dict(width=2)))
-#         fig_coupons.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "Below IG bonds, notes & debentures <= 13 months (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig_coupons, use_container_width=True)
-
-# st.title("Transactions of US Treasury (Excluding TIPS)")
-
-# # Create two columns
-# col1_, col2_ = st.columns(2)
-
-# option_security = col1_.selectbox('By Security', ['T-Bills', 'Coupons'])
-# if option_security == "T-Bills":
-#     with col1_:
-#         fig_coupons = go.Figure()
-#         fig_coupons.add_trace(go.Scatter(x=transactions_tbills_df.index.to_list(), y=transactions_tbills_df.iloc[:, 0],
-#                                          mode="lines", line=dict(width=2)))
-#         fig_coupons.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "T-Bills (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig_coupons, use_container_width=True)
-# elif option_security == "Coupons":
-#     with col1_:
-#         fig_coupons = go.Figure()
-#         fig_coupons.add_trace(go.Scatter(x=transactions_coupons_df.index.to_list(), y=transactions_coupons_df.iloc[:, 0],
-#                                          mode="lines", line=dict(width=2)))
-#         fig_coupons.update_layout(
-#             template="plotly_dark",
-#             title={
-#                 'text': "Coupons <= 2years (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'})
-#         st.plotly_chart(fig_coupons, use_container_width=True)
-
-# option_tcpty = col2_.selectbox('By Counterparty', ['Inter-Dealer Brokers & Others'])
-# if option_tcpty == "Inter-Dealer Brokers & Others":
-#     with col2_:
-#         fig_coupons = go.Figure()
-
-#         fig_coupons.add_trace(go.Scatter(x=transactions_IDB_df.index.to_list(), y=transactions_IDB_df.iloc[:, 0],
-#                                          mode="lines", line=dict(width=2), name="Inter-Dealer Brokers",
-#                                          showlegend=True))
-
-#         fig_coupons.add_trace(go.Scatter(x=transactions_others_df.index.to_list(), y=transactions_others_df.iloc[:, 0],
-#                                          mode="lines", line=dict(width=2), name="Others", showlegend=True,
-#                                          yaxis="y2"))  # Add second y-axis
-
-#         fig_coupons.update_layout(
-#             template="plotly_dark",
-#             legend=dict(
-#                 title=None, orientation="h", y=0.97, yanchor="bottom", x=0.5, xanchor="center"
-#             ),
-#             title={
-#                 'text': "Inter-Dealer Brokers & Others (in millions)",
-#                 'y': 0.9,
-#                 'x': 0.5,
-#                 'xanchor': 'center',
-#                 'yanchor': 'top'},
-#             yaxis=dict(title="Inter-Dealer Brokers"),
-#             yaxis2=dict(title="Others", side="right", overlaying="y")  # Add second y-axis configuration
-#         )
-
-#         st.plotly_chart(fig_coupons, use_container_width=True)
+with col5:
+    st.markdown("""
+    <div class='card'>
+        <a href='/primarydealer' style='color: white; text-decoration: none;'>
+            <div class="card-icon">🏦</div>
+            <h4>Primary Dealer Issuance</h4>
+            <p>Explore Federal Reserve data and issuance trends.</p>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
