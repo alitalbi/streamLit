@@ -1,5 +1,5 @@
 import streamlit as st
-
+st.set_page_config(initial_sidebar_state="collapsed")
 # Custom CSS to style the top menu and the page layout
 st.markdown("""
     <style>
