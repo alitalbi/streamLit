@@ -9,33 +9,101 @@ import yfinance as yf
 from functools import reduce
 import plotly.express as px
 import time
+import scipy
+from scipy import stats
+
 st.set_page_config(page_title="Business Cycle",layout="wide")
 
-def hit_ratio(period):
-  if period=="MtD":
-      period = -1
-  comparison = etf_returns.loc[sectors,etf_returns.columns[-period:]].sub(etf_returns.loc[broad_market,etf_returns.columns[-period:]])
-  positive_ratio = pd.DataFrame(comparison.gt(0).sum(axis=1)/len(etf_returns.columns[-period:]))
-  if period==-1:
-    positive_ratio.columns = ["MtD"]
-  else:
-    positive_ratio.columns = [str(period)+"m"]
-  return positive_ratio
+def hit_ratio(etf_returns,period):
+    if period=="MtD":
+        period = -1
+        comparison = etf_returns.loc[sectors,etf_returns.columns[-period:]].sub(etf_returns.loc[broad_market,etf_returns.columns[-period:]])
+        positive_ratio = pd.DataFrame(comparison.gt(0).sum(axis=1)/len(etf_returns.columns[-period:]))
+        positive_ratio.columns = ["MtD"]
+    elif period == "daily":
+        comparison = etf_returns.loc[sectors,:]-etf_returns.loc[broad_market,:]
+        positive_ratio = pd.DataFrame(np.where(comparison>0,1,0))
+        positive_ratio.columns = comparison.columns
+        positive_ratio.index = comparison.index
+        positive_ratio = positive_ratio.T.rolling(22).mean().T
+        positive_ratio.reset_index(inplace=True)
+        positive_ratio.dropna(axis=1,inplace=True)
+    else:
+        comparison = etf_returns.loc[sectors,etf_returns.columns[-period:]].sub(etf_returns.loc[broad_market,etf_returns.columns[-period:]])
+        positive_ratio = pd.DataFrame(comparison.gt(0).sum(axis=1)/len(etf_returns.columns[-period:]))
+        positive_ratio.columns = [str(period)+"m"]
+    return positive_ratio
+
+def agg_market_cycles(subdf_):
+    subdf_ = subdf_.T
+    
+    all_rankings_sector = []
+    for col_count in range(len(subdf_.columns)):
+        sample = pd.DataFrame(subdf_.iloc[:,col_count])
+        sample.sort_values(by=sample.columns[0],ascending=False,inplace=True)
+        all_rankings_sector.append(list(sample.head(3).index)+list(sample.tail(3).index))
+    dates = []
+    all_rankings_df = []
+    for subsector_ranking in all_rankings_sector:
+        all_cycles = []
+        cycle_mapping = []
+        for index in range(len(subsector_ranking)):
+            cycle_choice = []
+            for cycle in ["Recession","Slowdown","Recovery","Expansion"]:
+                if index <=2:
+                    if subsector_ranking[index] in sector_roadmap[cycle]["++"]:
+                        cycle_choice.append(cycle)
+                        all_cycles.append(cycle)
+                    if subsector_ranking[index] in sector_roadmap[cycle]["+"]:
+                        cycle_choice.append(cycle)
+                        all_cycles.append(cycle)
+                else:
+                    if subsector_ranking[index] in sector_roadmap[cycle]["-"]:
+                        cycle_choice.append(cycle)
+                        all_cycles.append(cycle)
+                    if subsector_ranking[index] in sector_roadmap[cycle]["--"]:
+                        cycle_choice.append(cycle)
+                        all_cycles.append(cycle)
+        cycle_mapping.append(cycle_choice)
+
+        cycle_count_dict = {cycle:[round(all_cycles.count(cycle)/len(all_cycles),2)] for cycle in list(set(all_cycles))}
+       # cycle_count_dict["Date"] = dates
+        all_rankings_df.append(pd.DataFrame(cycle_count_dict))
+    
+    agg_all_cycles = pd.concat(all_rankings_df)
+    agg_all_cycles.index = subdf_.columns
+    
+    return agg_all_cycles
+    # return all_cycles_count
+
 def concat_data(data,period,label_indicator):
     if period =="MtD":
-        df = data[["sector","MtD"]].T
+        df = data[["sector","MtD"]].T  
     else:
        df = data[["sector",str(period)+"m"]].T
+
     df.columns= df.loc["sector",:]
     df.drop("sector",axis=0,inplace=True)
+    
     df.index = [label_indicator]
     return df
 
-def agg_zscore(df):
-    z_1=pd.DataFrame((df.iloc[0,:]-df.iloc[0,:].mean())/df.iloc[0,:].std()).T
-    z_2=pd.DataFrame((df.iloc[1,:]-df.iloc[1,:].mean())/df.iloc[1,:].std()).T
-    z_3=pd.DataFrame((df.iloc[2,:]-df.iloc[2,:].mean())/df.iloc[2,:].std()).T
-    agg_z_score = pd.concat([z_1,z_2,z_3]).mean(axis=0)
+
+
+def agg_zscore(df,type):
+    if type==1:
+
+        z_1=pd.DataFrame((df.iloc[0,:]-df.iloc[0,:].mean())/df.iloc[0,:].std()).T
+        z_2=pd.DataFrame((df.iloc[1,:]-df.iloc[1,:].mean())/df.iloc[1,:].std()).T
+        z_3=pd.DataFrame((df.iloc[2,:]-df.iloc[2,:].mean())/df.iloc[2,:].std()).T
+        agg_z_score = pd.concat([z_1,z_2,z_3]).mean(axis=0)
+    else:
+        df["mean"] = df.mean(axis=1)
+        df["std"] = df.std(axis=1)
+        df.iloc[:,:11] =(np.array(df.iloc[:,:11])-np.array(df.iloc[:,11]).reshape(-1,1))/np.array(df.iloc[:,12]).reshape(-1,1)
+        #df.loc[:,df.columns[:len(df.columns)-2]] = df.loc[:,df.columns[:len(df.columns)-2]])
+        df.drop(["mean","std"],axis=1,inplace=True)
+        agg_z_score = df.copy()
     return agg_z_score
 
 def style_cycle_column(cycles):
@@ -118,6 +186,20 @@ sectors = list(spdr_sector_etfs.values())
 sectors.remove("SCHB")
 broad_market = "SCHB"
 etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2022-01-01", end="2024-12-05", interval="1d")["Adj Close"]
+### avg saily dev ###------------------------------------
+avg_daily = (etf_prices.pct_change(1).rolling(22).mean()*100)
+
+avg_daily.dropna(inplace=True)
+avg_daily = avg_daily.T
+avg_daily_copy = avg_daily.copy()
+excess_avg_daily_return = round(avg_daily.loc[sectors,:] - avg_daily.loc[broad_market,:],2)
+avg_daily.reset_index(inplace=True)
+
+excess_avg_daily_return.reset_index(inplace=True)
+avg_daily["sector"] = avg_daily["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
+### avg saily dev ###------------------------------------
+
+
 etf_returns = round(100*(etf_prices.resample("M").last()/etf_prices.resample("M").first() - 1),2).T
 avg_returns = etf_returns.copy()
 avg_returns["MtD"] = etf_returns.iloc[:,-1]
@@ -145,25 +227,53 @@ avg_returns = avg_returns[["Ticker","sector","MtD","3m","6m","12m","18m"]]
 
 styled_excess_returns = excess_return.style.apply(highlight_values,axis=None)
 
+### avg saily dev ###------------------------------------
+daily_avg_hit_ratio = hit_ratio(avg_daily_copy,"daily")
+### avg saily dev ###------------------------------------
+
+
+#daily_avg_hit_ratio["sector"] = daily_avg_hit_ratio["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
 hit_ratios_list= []
 for period in ["MtD",3,6,12,18]:
-  sub_df = round(hit_ratio(period),2)*100
+  sub_df = round(hit_ratio(etf_returns,period),2)*100
   hit_ratios_list.append(sub_df)
 hit_ratios = pd.concat(hit_ratios_list,axis=1)
 hit_ratios.reset_index(inplace=True)
 hit_ratios["sector"] = hit_ratios["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
 styled_hit_ratios = hit_ratios.style.apply(highlight_values,axis=None)
 sector_avg_returns = avg_returns.loc[avg_returns["Ticker"].isin(sectors)]
+
+### avg saily dev ###------------------------------------
+avg_daily_copy.reset_index(inplace=True)
+for df in ["daily_avg_hit_ratio","excess_avg_daily_return","avg_daily_copy"]:
+    exec(df+"[\"sector\"] = "+df+"[\"Ticker\"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})")
+    exec(df+".drop(\"Ticker\",axis=1,inplace=True)")
+    exec(df+".set_index(\"sector\",inplace=True)")
+    exec(df+"="+df+".T")
+
+avg_daily_copy.drop("Broad US Market",axis=1,inplace=True)
 # st.dataframe(styled_hit_ratios.format({"MtD":"{:.0f}","2m":"{:.0f}","3m":"{:.0f}","6m":"{:.0f}","9m":"{:.0f}",
 #                                             "12m":"{:.0f}","18m":"{:.0f}"}))
+common_index = daily_avg_hit_ratio.index.intersection(excess_avg_daily_return.index).intersection(avg_daily_copy.index)
+### avg saily dev ###------------------------------------------------ 
+daily_avg_hit_ratio = daily_avg_hit_ratio.loc[common_index]
+excess_avg_daily_return = excess_avg_daily_return.loc[common_index]
+avg_daily_copy = avg_daily_copy.loc[common_index]
 
 filtered_col = ["Ticker","sector","3m","6m","12m","18m"]
-
+#hit_avg_daily = concat_data(daily_avg_hit_ratio,"","Hit Rate (% months outperf Market)")
 hit_mtd=concat_data(hit_ratios,"MtD","Hit Rate (% months outperf Market)")
 avg_return_mtd=concat_data(sector_avg_returns,"MtD","Avg Monthly Return")
 excess_mtd=concat_data(excess_return,"MtD","Avg Monthly Excess Return")
 indicator_mtd = pd.concat([hit_mtd,avg_return_mtd,excess_mtd])
-agg_zscore_mtd = agg_zscore(indicator_mtd)
+agg_zscore_daily_avg = agg_zscore(excess_avg_daily_return,2)
+agg_zscore_hit_avg = agg_zscore(daily_avg_hit_ratio,2)
+agg_zscore_excess_avg = agg_zscore(excess_avg_daily_return,2)
+
+agg_zscores_all_daily_avg = (agg_zscore_excess_avg+agg_zscore_daily_avg+agg_zscore_hit_avg)/3
+agg_market_cycle_df = agg_market_cycles(agg_zscores_all_daily_avg)
+# st.dataframe(agg_zscores_all_daily_avg.style.apply(highlight_values,axis=None))
+agg_zscore_mtd = agg_zscore(indicator_mtd,1)
 indicator_mtd.loc["Agg Score MtD"] = agg_zscore_mtd
 indicator_mtd = indicator_mtd.astype('float64')
 styled_indicator_mtd = indicator_mtd.style.apply(highlight_values,axis=None)
@@ -174,7 +284,7 @@ hit_3m=concat_data(hit_ratios,3,"Hit Rate (% months outperf Market)")
 avg_return_3m=concat_data(sector_avg_returns,3,"Avg Monthly Return")
 excess_3m=concat_data(excess_return,3,"Avg Monthly Excess Return")
 indicator_3m = pd.concat([hit_3m,avg_return_3m,excess_3m])
-agg_zscore_3m = agg_zscore(indicator_3m)
+agg_zscore_3m = agg_zscore(indicator_3m,1)
 indicator_3m.loc["Agg Score 3m"] = agg_zscore_3m
 indicator_3m = indicator_3m.astype('float64')
 styled_indicator_3m = indicator_3m.style.apply(highlight_values,axis=None)
@@ -184,7 +294,7 @@ hit_6m=concat_data(hit_ratios,6,"Hit Rate (% months outperf Market)")
 avg_return_6m=concat_data(sector_avg_returns,6,"Avg Monthly Return")
 excess_6m=concat_data(excess_return,6,"Avg Monthly Excess Return")
 indicator_6m = pd.concat([hit_6m,avg_return_6m,excess_6m])
-agg_zscore_6m = agg_zscore(indicator_6m)
+agg_zscore_6m = agg_zscore(indicator_6m,1)
 indicator_6m.loc["Agg Score 6m"] = agg_zscore_6m
 indicator_6m = indicator_6m.astype('float64')
 
@@ -193,7 +303,7 @@ hit_12m=concat_data(hit_ratios,12,"Hit Rate (% months outperf Market)")
 avg_return_12m=concat_data(sector_avg_returns,12,"Avg Monthly Return")
 excess_12m=concat_data(excess_return,12,"Avg Monthly Excess Return")
 indicator_12m = pd.concat([hit_12m,avg_return_12m,excess_12m])
-agg_zscore_12m = agg_zscore(indicator_12m)
+agg_zscore_12m = agg_zscore(indicator_12m,1)
 indicator_12m.loc["Agg Score 12m"] = agg_zscore_12m
 indicator_12m = indicator_12m.astype('float64')
 
@@ -202,7 +312,7 @@ hit_18m=concat_data(hit_ratios,18,"Hit Rate (% months outperf Market)")
 avg_return_18m=concat_data(sector_avg_returns,18,"Avg Monthly Return")
 excess_18m=concat_data(excess_return,18,"Avg Monthly Excess Return")
 indicator_18m = pd.concat([hit_18m,avg_return_18m,excess_18m])
-agg_zscore_18m = agg_zscore(indicator_18m)
+agg_zscore_18m = agg_zscore(indicator_18m,1)
 indicator_18m.loc["Agg Score 18m"] = agg_zscore_18m
 indicator_18m = indicator_18m.astype('float64')
 
@@ -212,29 +322,59 @@ st.markdown("### Sector Scores for Business Cycles")
 col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
 
 with col1:
-   agg_z_check = st.checkbox("All periods")
+    agg_z_check = st.checkbox("All periods")
 with col2:
-   agg_z_check_3m = st.checkbox("3m")
+    agg_z_check_3m = st.checkbox("3m")
 with col3:
-   agg_z_check_6m = st.checkbox("6m")
+    agg_z_check_6m = st.checkbox("6m")
 with col4:
-   agg_z_check_12m = st.checkbox("12m")
+    agg_z_check_12m = st.checkbox("12m")
 with col5:
-   agg_z_check_18m = st.checkbox("18m")
+    agg_z_check_18m = st.checkbox("18m")
 periods = ["Agg Score MtD"]
 if agg_z_check:
     periods = list(agg_z.index)
 if agg_z_check_3m:
-   periods.append("Agg Score 3m")
+    periods.append("Agg Score 3m")
 if agg_z_check_6m:
-   periods.append("Agg Score 6m")
+    periods.append("Agg Score 6m")
 if agg_z_check_12m:
-   periods.append("Agg Score 12m")
+    periods.append("Agg Score 12m")
 if agg_z_check_18m:
-   periods.append("Agg Score 18m")
+    periods.append("Agg Score 18m")
 st.dataframe(agg_z.loc[periods,:].style.apply(highlight_values,axis=None).format({col:"{:.2f}" for col in indicator_18m.columns}),width=1400)
+period_options = ["MtD","3m","6m","12m","18m"]
+roadmap_period = st.selectbox("Period",options=period_options)
 
-roadmap_period = st.selectbox("Period",options=["MtD","3m","6m","12m","18m"])
+# sub_market_cycle = []
+# for period in period_options:
+#     sub_market_cycle.append(agg_market_cycles(period))
+# agg_market_cycle = pd.concat(sub_market_cycle)[::-1]
+# agg_market_cycle.fillna(0,inplace = True)
+agg_market_cycle_df = agg_market_cycle_df.loc[:,["Recession","Slowdown","Recovery","Expansion"]]
+agg_market_cycle_df["Total %"] = agg_market_cycle_df.sum(axis=1)
+
+agg_market_cycle_df.fillna(0,inplace=True)
+
+
+# fig = go.Figure()
+# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
+#                                          y=agg_market_cycle_df['Expansion'], line=dict(width=2,color="rgba(0, 255, 0,0.8)"),
+#                                          mode="lines",
+#                                          name="Expansion", showlegend=True,hoverinfo="x",stackgroup="one",fill="tonexty", ))
+# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
+#                                          y=agg_market_cycle_df['Slowdown'], line=dict(width=2,color="orange"),
+#                                          mode="lines",
+#                                          name="Slowdown", showlegend=True,hoverinfo="x+y",stackgroup="two"))
+# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
+#                                          y=agg_market_cycle_df['Recovery'], line=dict(width=2,color="rgba(0, 175, 0,0.5)"),
+#                                          mode="lines",
+#                                          name="Recovery", showlegend=True,hoverinfo="x+y",stackgroup="three"))
+# fig.add_trace(go.Scatter(x=(agg_market_cycle_df.index.to_list()),
+#                                          y=agg_market_cycle_df['Recession'], line=dict(width=2,color="red"),
+#                                          mode="lines",
+#                                          name="Recession", showlegend=True,hoverinfo="x+y",stackgroup="four"))
+
 sorted_zscores = (agg_z.loc[["Agg Score "+roadmap_period],:].T).sort_values(by="Agg Score " +roadmap_period,ascending=False)
 sector_ranking = list(sorted_zscores.head(3).index)+list(sorted_zscores.tail(3).index)
 # Sample data for sectors and rankings
@@ -274,6 +414,84 @@ with col2:
     st.markdown("### Market Cycle")
     st.write(all_cycles_count)
 # st.markdown("### MtD")
+cycle_graph_choice = st.selectbox("Graph type : ",options=["Stacked Bar","Line Areas"])
+fig = go.Figure()
+if cycle_graph_choice == "Stacked Bar": 
+# Add traces for each category
+    fig.add_trace(go.Bar(
+        x=agg_market_cycle_df.index.to_list(),
+        y=agg_market_cycle_df["Recession"],
+        name="Recession",
+        marker=dict(color="red"),
+        hoverinfo="x+y+name"
+    ))
+
+    fig.add_trace(go.Bar(
+        x=agg_market_cycle_df.index.to_list(),
+        y=agg_market_cycle_df["Recovery"],
+        name="Recovery",
+        marker=dict(color="white"),
+        hoverinfo="x+y+name"
+    ))
+
+    fig.add_trace(go.Bar(
+        x=agg_market_cycle_df.index.to_list(),
+        y=agg_market_cycle_df["Slowdown"],
+        name="Slowdown",
+        marker=dict(color="orange"),
+        hoverinfo="x+y+name"
+    ))
+
+    fig.add_trace(go.Bar(
+        x=agg_market_cycle_df.index.to_list(),
+        y=agg_market_cycle_df["Expansion"],
+        name="Expansion",
+        marker=dict(color="green"),
+        hoverinfo="x+y+name"
+    ))
+
+    # Update layout for stacked bar chart
+    fig.update_layout(
+        barmode="stack",
+        title="Contribution to Total %",
+        xaxis=dict(title="Date"),
+        yaxis=dict(title="Total Percentage"),
+        legend=dict(title="Category"),
+        template="plotly_dark"
+    )
+else:
+
+# Add traces for each category
+    categories = ["Recession", "Recovery", "Slowdown", "Expansion"]
+    colors = ["red", "white", "orange", "green"]
+
+    for category, color in zip(categories, colors):
+        fig.add_trace(go.Scatter(
+            x=agg_market_cycle_df.index.to_list(),
+            y=agg_market_cycle_df[category],
+            mode="lines",
+            name=category,
+            stackgroup="one",  # Enables stacking
+            line=dict(color=color),
+            hoverinfo="x+y+name"
+        ))
+# st.write(agg_market_cycle_df)
+fig.update_layout(  # customize font and legend orientation & position
+    yaxis=dict(tickformat=".1%"),
+    title_font_family="Arial Black",
+    title={
+            'text' : "Aggregate Market Cycle",
+            'x':0.5,
+            'xanchor': 'center'
+        },
+    font=dict(
+        family="Rockwell",
+        size=18),   
+    legend=dict(
+        title="Cycle", orientation="v", y=0.97, yanchor="bottom", x=0.9, xanchor="left"
+    ))
+
+st.plotly_chart(fig)
 st.dataframe(styled_indicator_mtd.format({col:"{:.1f}" for col in indicator_3m.columns}),width=1400)
 excess_check = st.checkbox("Display Avg Monthly Excess Return")
 short_term = st.expander("Short Term 3-6m")
@@ -297,3 +515,6 @@ with long_term:
 
     st.markdown("### 18m")
     st.dataframe(indicator_18m.style.apply(highlight_values,axis=None).format({col:"{:.1f}" for col in indicator_18m.columns}),width=1400)
+
+
+    
