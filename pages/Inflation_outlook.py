@@ -11,19 +11,6 @@ from pandas.tseries.offsets import BDay
 st.set_page_config(page_title="Inflation",layout="wide",initial_sidebar_state="collapsed")
 
 
-
-# Top navigation bar with links to different pages
-st.markdown("""
-    <div class="top-nav">
-        <a href="/">Home</a>
-        <a href="/growth">Growth</a>
-        <a href="/Inflation_outlook">Inflation</a>
-        <a href="/Risk_on_off">Risk On/Off</a>
-        <a href="/Sector_Business_Cycle">Business Cycle</a>
-        <a href="/Primary_Dealer">Primary Dealer Issuance</a>
-    </div>
-""", unsafe_allow_html=True)
-
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
