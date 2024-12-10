@@ -66,6 +66,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
 # Render the navigation bar
 st.markdown("""
     <div class="top-nav">
