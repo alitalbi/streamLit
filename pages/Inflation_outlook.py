@@ -7,26 +7,51 @@ import yfinance as yf
 from datetime import datetime,timedelta
 from pandas.tseries.offsets import BDay
 
+st.set_page_config(page_title="Inflation",layout="wide",initial_sidebar_state="collapsed")
+
+# Set up the top navigation bar with buttons (no new tabs will open)
+st.markdown("""
+    <style>
+    .top-nav {
+        display: flex;
+        justify-content: space-around;
+        background-color: #333;
+        padding: 10px;
+    }
+    .top-nav a {
+        color: white;
+        text-decoration: none;
+        font-size: 18px;
+    }
+    .top-nav a:hover {
+        color: #ddd;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 st.markdown("""
     <style>
     /* Style for the top navigation bar */
     .top-nav {
         background-color: #3B3B3B;
-        padding: 10px 40px;
+        padding: 15px 0;  /* Increased padding to add more space above the navbar */
         text-align: center;
         display: flex;
-        justify-content: space-around;
+        justify-content: center;  /* Center items */
         align-items: center;
+        margin-bottom: 20px; /* Adds more space below the navbar */
+        border-radius: 10px; /* Rounded corners for the navbar */
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Adds subtle shadow to lift the navbar */
     }
 
     /* Style for the menu links */
     .top-nav a {
         text-decoration: none;
         color: white;
-        font-size: 16px;
-        padding: 10px 10px;
-        border-radius: 1px;
+        font-size: 18px;  /* Slightly larger text for better visibility */
+        padding: 8px 18px;  /* Adjusted padding to make links tighter */
+        margin: 0 10px;  /* Added margin between the links */
+        border-radius: 25px;  /* More rounded links */
         transition: background-color 0.3s ease;
     }
 
@@ -38,20 +63,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Top navigation bar with links to different pages
+# Render the navigation bar
 st.markdown("""
     <div class="top-nav">
-        <a href="/">Home</a>
-        <a href="/growth">Growth</a>
-        <a href="/inflation">Inflation</a>
-        <a href="/riskonoff">Risk On/Off</a>
-        <a href="/businesscycle">Business Cycle</a>
-        <a href="/primarydealer">Primary Dealer Issuance</a>
+        <a href="/" target="_self">Home</a>
+        <a href="/growth" target="_self">Growth</a>
+        <a href="/Inflation_outlook" target="_self">Inflation</a>
+        <a href="/Risk_on_off" target="_self">Risk On/Off</a>
+        <a href="/Sector_Business_Cycle" target="_self">Business Cycle</a>
+        <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
     </div>
 """, unsafe_allow_html=True)
-
-st.set_page_config(page_title="Inflation",layout="wide",initial_sidebar_state="collapsed")
-
 
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
