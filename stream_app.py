@@ -73,7 +73,7 @@ col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
     st.markdown("""
     <div class='card'>
-        <a href='/growth' style='color: white; text-decoration: none;'>
+        <a href='/growth' target='_self' style='color: white; text-decoration: none;'>
             <div class="card-icon">📈</div>
             <h4>Growth</h4>
             <p>Understand the dynamics of economic growth.</p>
@@ -84,7 +84,7 @@ with col1:
 with col2:
     st.markdown("""
     <div class='card'>
-        <a href='/inflation' style='color: white; text-decoration: none;'>
+        <a href='/Inflation_outlook' target='_self' style='color: white; text-decoration: none;'>
             <div class="card-icon">💸</div>
             <h4>Inflation</h4>
             <p>Analyze price trends and inflation rates.</p>
@@ -95,7 +95,7 @@ with col2:
 with col3:
     st.markdown("""
     <div class='card'>
-        <a href='/riskonoff' style='color: white; text-decoration: none;'>
+        <a href='/Risk_on_off' target='_self' style='color: white; text-decoration: none;'>
             <div class="card-icon">⚖️</div>
             <h4>Risk On/Off</h4>
             <p>Monitor market risk sentiment.</p>
@@ -106,7 +106,7 @@ with col3:
 with col4:
     st.markdown("""
     <div class='card'>
-        <a href='/businesscycle' style='color: white; text-decoration: none;'>
+        <a href='/Sector_Business_Cycle' target='_self' style='color: white; text-decoration: none;'>
             <div class="card-icon">🔄</div>
             <h4>Business Cycle</h4>
             <p>Explore phases of economic cycles.</p>
@@ -117,7 +117,7 @@ with col4:
 with col5:
     st.markdown("""
     <div class='card'>
-        <a href='/primarydealer' style='color: white; text-decoration: none;'>
+        <a href='/Primary_Dealer' target='_self' style='color: white; text-decoration: none;'>
             <div class="card-icon">🏦</div>
             <h4>Primary Dealer Issuance</h4>
             <p>Explore Federal Reserve data and issuance trends.</p>
