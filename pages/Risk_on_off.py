@@ -44,12 +44,12 @@ st.markdown("""
 # Top navigation bar with links to different pages
 st.markdown("""
     <div class="top-nav">
-        <a href="/">Home</a>
-        <a href="/growth">Growth</a>
-        <a href="/inflation">Inflation</a>
-        <a href="/riskonoff">Risk On/Off</a>
-        <a href="/businesscycle">Business Cycle</a>
-        <a href="/primarydealer">Primary Dealer Issuance</a>
+        <a href="https://eco-framework.streamlit.app/">Home</a>
+        <a href="https://eco-framework.streamlit.app/growth">Growth</a>
+        <a href="https://eco-framework.streamlit.app/Inflation_outlook">Inflation</a>
+        <a href="https://eco-framework.streamlit.app/Risk_on_off">Risk On/Off</a>
+        <a href="/Sector_Business_Cycle">Business Cycle</a>
+        <a href="/Primary_Dealer">Primary Dealer Issuance</a>
     </div>
 """, unsafe_allow_html=True)
 frequency = "1d"
