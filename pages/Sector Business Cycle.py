@@ -10,7 +10,7 @@ from functools import reduce
 import plotly.express as px
 import time
 
-st.set_page_config(page_title="Business Cycle",layout="wide")
+st.set_page_config(page_title="Business Cycle",layout="wide",initial_state_sidebar="collapsed")
 
 # Set up the top navigation bar with buttons (no new tabs will open)
 st.markdown("""
