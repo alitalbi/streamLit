@@ -3,12 +3,54 @@ import pandas as pd
 from fredapi import Fred
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import wget
 import yfinance as yf
 from datetime import datetime,timedelta
-import os
 from pandas.tseries.offsets import BDay
-st.set_page_config(page_title="Inflation",layout="wide")
+
+
+st.markdown("""
+    <style>
+    /* Style for the top navigation bar */
+    .top-nav {
+        background-color: #3B3B3B;
+        padding: 10px 40px;
+        text-align: center;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+
+    /* Style for the menu links */
+    .top-nav a {
+        text-decoration: none;
+        color: white;
+        font-size: 16px;
+        padding: 10px 10px;
+        border-radius: 1px;
+        transition: background-color 0.3s ease;
+    }
+
+    /* Hover effect for the menu items */
+    .top-nav a:hover {
+        background-color: #4C4C4C;
+    }
+
+    </style>
+""", unsafe_allow_html=True)
+
+# Top navigation bar with links to different pages
+st.markdown("""
+    <div class="top-nav">
+        <a href="/">Home</a>
+        <a href="/growth">Growth</a>
+        <a href="/inflation">Inflation</a>
+        <a href="/riskonoff">Risk On/Off</a>
+        <a href="/businesscycle">Business Cycle</a>
+        <a href="/primarydealer">Primary Dealer Issuance</a>
+    </div>
+""", unsafe_allow_html=True)
+
+st.set_page_config(page_title="Inflation",layout="wide",initial_sidebar_state="collapsed")
 
 
 frequency = "monthly"
