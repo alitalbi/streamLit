@@ -10,7 +10,7 @@ from functools import reduce
 import plotly.express as px
 import time
 
-st.set_page_config(page_title="Risk On/Off Framework",initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Risk On/Off Framework",layout="wide",initial_sidebar_state="collapsed")
 
 # Set up the top navigation bar with buttons (no new tabs will open)
 st.markdown("""
