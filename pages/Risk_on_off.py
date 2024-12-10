@@ -254,7 +254,7 @@ elif period_18m:
 elif period_all:
     start = date_start
 if len(selection_ratios) != 0:
-    etf1=etf_pairs[selection_ratios][0]
+    etf1 = etf_pairs[selection_ratios][0]
     etf2 = etf_pairs[selection_ratios][1]
 
     data_etf1 = pd.DataFrame(
@@ -274,7 +274,7 @@ if len(selection_ratios) != 0:
     fig_ratio.add_trace(
         go.Scatter(x=merged_ratio.index.to_list(), y=merged_ratio[etf2], name=etf2,
                 mode="lines", line=dict(width=2,), showlegend=True),secondary_y=True)
-    fig_ratio.update_layout(title=selection_ratios[0],yaxis=dict(
+    fig_ratio.update_layout(title=selection_ratios,yaxis=dict(
         title=etf1,
         range=[min(merged_ratio[etf1]), max(merged_ratio[etf1])],  # Set the range for primary y-axis
     ),
