@@ -9,8 +9,10 @@ import yfinance as yf
 from functools import reduce
 import plotly.express as px
 import time
+from pandas.tseries.offsets import BDay
 
 st.set_page_config(page_title="Risk On/Off Framework",layout="wide",initial_sidebar_state="collapsed")
+
 
 # Set up the top navigation bar with buttons (no new tabs will open)
 st.markdown("""
@@ -73,10 +75,11 @@ st.markdown("""
         <a href="/growth" target="_self">Growth</a>
         <a href="/Inflation_outlook" target="_self">Inflation</a>
         <a href="/Risk_on_off" target="_self">Risk On/Off</a>
-        <a href="/Sector_Business_Cycle" target="_self">Business Cycle</a>
+        <a href="/Business_Cycle" target="_self">Business Cycle</a>
         <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
     </div>
 """, unsafe_allow_html=True)
+
 frequency = "1d"
 
 date_start = "2010-01-01"
@@ -219,22 +222,68 @@ ETF_ratios = concat_momentum.reset_index()
 # styled_df = styled_df.set_properties(subset=pd.IndexSlice[:, "aggregate_periods"], **{'color': '', 'background-color': ''})
 
 st.dataframe(styled_df.format({col:"{:.2f}" for col in concat_momentum.columns}),width=1300)
-selection_ratios = st.multiselect("Ratios",options=ETF_ratios["Description"][:len(ETF_ratios)-1])
+col1,col2 = st.columns(2,gap="small")
+with col1:
+    selection_ratios = st.multiselect("Ratios",options=ETF_ratios["Description"][:len(ETF_ratios)-1])
+with col2:
+    st.markdown("""<h4>Period</h4>""",unsafe_allow_html=True)
+    col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
+    with col1:
+        period_1m = st.button("1m")
+    with col2:
+        period_3m = st.button("3m")
+    with col3:
+        period_6m = st.button("6m")
+    with col4:
+        period_12m = st.button("12m")
+    with col5:
+        period_18m = st.button("18m")    
+    with col6:
+        period_all = st.button("All")
+start = date_start
+if period_1m:
+    start = datetime.strptime(date_end,"%Y-%m-%d") +  BDay(-22)
+elif period_3m:
+    start = datetime.strptime(date_end,"%Y-%m-%d") +  BDay(-66)
+elif period_6m:
+    start = datetime.strptime(date_end,"%Y-%m-%d") +  BDay(-132)
+elif period_12m:
+    start = datetime.strptime(date_end,"%Y-%m-%d") +  BDay(-252)
+elif period_18m:
+    start = datetime.strptime(date_end,"%Y-%m-%d") +  BDay(-384)
+elif period_all:
+    start = date_start
 if len(selection_ratios) != 0:
     etf1=etf_pairs[selection_ratios[0]][0]
     etf2 = etf_pairs[selection_ratios[0]][1]
-    data_etf1 = pd.DataFrame(
-                yf.download(etf1, date_start, date_end, period=frequency))["Close"]
-    data_etf2 = pd.DataFrame(
-                yf.download(etf2, date_start, date_end, period=frequency))["Close"]
-    merged_ratio = data_etf1.pct_change(1).join(data_etf2.pct_change(1))
-    merged_ratio[etf1+"/"+etf2] = merged_ratio[etf1]/merged_ratio[etf2]
-    #should have insteade of pc_change(1) the ratio for the last 1w + average pct change on a sliding window of 1w,1m,3m,etc..
-    fig_ratio = go.Figure()
-    fig_ratio.add_trace(
-        go.Scatter(x=merged_ratio.index.to_list(), y=merged_ratio[etf1+"/"+etf2], name=etf1+"/"+etf2,
-                mode="lines", line=dict(width=2, color='white'), showlegend=True))
 
+    data_etf1 = pd.DataFrame(
+                yf.download(etf1, start, date_end, period=frequency))["Close"]
+    data_etf2 = pd.DataFrame(
+                yf.download(etf2, start, date_end, period=frequency))["Close"]
+    merged_ratio = data_etf1.join(data_etf2)
+    merged_ratio.dropna(inplace=True)
+
+    #should have insteade of pc_change(1) the ratio for the last 1w + average pct change on a sliding window of 1w,1m,3m,etc..
+    
+    fig_ratio = make_subplots(specs=[[{"secondary_y": True}]])
+
+    fig_ratio.add_trace(
+        go.Scatter(x=merged_ratio.index.to_list(), y=merged_ratio[etf1], name=etf1,
+                mode="lines", line=dict(width=2), showlegend=True))
+    fig_ratio.add_trace(
+        go.Scatter(x=merged_ratio.index.to_list(), y=merged_ratio[etf2], name=etf2,
+                mode="lines", line=dict(width=2,), showlegend=True),secondary_y=True)
+    fig_ratio.update_layout(title=selection_ratios[0],yaxis=dict(
+        title=etf1,
+        range=[min(merged_ratio[etf1]), max(merged_ratio[etf1])],  # Set the range for primary y-axis
+    ),
+    yaxis2=dict(
+        title=etf2,
+        range=[min(merged_ratio[etf2]), max(merged_ratio[etf2])],  # Set the range for secondary y-axis
+        overlaying="y",  # Overlay on the same plot
+        side="right"      # Place on the right side
+    ))
     st.plotly_chart(fig_ratio)
 # fig_1w = px.line(concat_data_1w)
 # fig_1w.update_layout(title_text="Momentum 1w")
