@@ -119,7 +119,7 @@ with col5:
     <div class='card'>
         <a href='/Primary_Dealer' target='_self' style='color: white; text-decoration: none;'>
             <div class="card-icon">🏦</div>
-            <h4>Primary Dealer Issuance</h4>
+            <h4>Primary Dealer</h4>
             <p>Explore Federal Reserve data and issuance trends.</p>
         </a>
     </div>
