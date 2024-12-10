@@ -10,6 +10,7 @@ from functools import reduce
 import plotly.express as px
 import time
 
+st.set_page_config(page_title="Risk On/Off Framework",initial_sidebar_state="collapsed")
 st.markdown("""
     <style>
     /* Style for the top navigation bar */
@@ -51,8 +52,6 @@ st.markdown("""
         <a href="/primarydealer">Primary Dealer Issuance</a>
     </div>
 """, unsafe_allow_html=True)
-st.set_page_config(page_title="Risk On/Off Framework",initial_sidebar_state="collapsed")
-
 frequency = "1d"
 
 date_start = "2010-01-01"
