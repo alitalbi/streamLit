@@ -17,7 +17,7 @@ st.markdown("""
     <style>
     .top-nav {
         display: flex;
-        justify-content: space-around;
+        justify-content: center;
         background-color: #333;
         padding: 10px;
     }
@@ -38,10 +38,10 @@ st.markdown("""
     /* Style for the top navigation bar */
     .top-nav {
         background-color: #3B3B3B;
-        padding: 10px 40px;
+        padding: 15px 0;
         text-align: center;
         display: flex;
-        justify-content: space-around;
+        justify-content: center;  /* Center items */
         align-items: center;
     }
 
@@ -49,9 +49,10 @@ st.markdown("""
     .top-nav a {
         text-decoration: none;
         color: white;
-        font-size: 16px;
-        padding: 10px 10px;
-        border-radius: 1px;
+        font-size: 18px;  /* Slightly larger text for better visibility */
+        padding: 8px 18px;  /* Adjusted padding to make links tighter */
+        margin: 0 10px;  /* Added margin between the links */
+        border-radius: 25px;  /* More rounded links */
         transition: background-color 0.3s ease;
     }
 
@@ -66,12 +67,12 @@ st.markdown("""
 # Top navigation bar with links to different pages
 st.markdown("""
     <div class="top-nav">
-        <a href="/">Home</a>
+        <a href="/" target="_self">Home</a>
+        <a href="/Inflation_outlook" target="_self">Inflation</a>
+        <a href="/Risk_on_off" target="_self">Risk On/Off</a>
+        <a href="/Sector_Business_Cycle" target="_self">Business Cycle</a>
+        <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
         <a href="/growth" target="_self">Growth</a>
-        <a href="/inflation">Inflation</a>
-        <a href="/riskonoff">Risk On/Off</a>
-        <a href="/businesscycle">Business Cycle</a>
-        <a href="/primarydealer">Primary Dealer Issuance</a>
     </div>
 """, unsafe_allow_html=True)
 frequency = "monthly"
