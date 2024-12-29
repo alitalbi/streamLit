@@ -13,13 +13,33 @@ from pandas.tseries.offsets import BDay
 st.set_page_config(layout="wide")
 st.markdown("""
     <style>
+    .top-nav {
+        display: flex;
+        justify-content: center;
+        background-color: #333;
+        padding: 10px;
+    }
+    .top-nav a {
+        color: white;
+        text-decoration: none;
+        font-size: 18px;
+    }
+    .top-nav a:hover {
+        color: #ddd;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+    <style>
     /* Style for the top navigation bar */
     .top-nav {
         background-color: #3B3B3B;
-        padding: 10px 40px;
+        padding: 15px 0;
         text-align: center;
         display: flex;
-        justify-content: space-around;
+        justify-content: center;  /* Center items */
         align-items: center;
     }
 
@@ -27,9 +47,10 @@ st.markdown("""
     .top-nav a {
         text-decoration: none;
         color: white;
-        font-size: 16px;
-        padding: 10px 20px;
-        border-radius: 1px;
+        font-size: 18px;  /* Slightly larger text for better visibility */
+        padding: 8px 18px;  /* Adjusted padding to make links tighter */
+        margin: 0 10px;  /* Added margin between the links */
+        border-radius: 25px;  /* More rounded links */
         transition: background-color 0.3s ease;
     }
 
@@ -40,19 +61,6 @@ st.markdown("""
 
     </style>
 """, unsafe_allow_html=True)
-
-# Top navigation bar with links to different pages
-st.markdown("""
-    <div class="top-nav">
-        <a href="/">Home</a>
-        <a href="/growth">Growth</a>
-        <a href="/Inflation_outlook">Inflation</a>
-        <a href="/Risk_on_off">Risk On/Off</a>
-        <a href="/Sector_Business_Cycle">Business Cycle</a>
-        <a href="/Primary_Dealer">Primary Dealer Issuance</a>
-    </div>
-""", unsafe_allow_html=True)
-
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
