@@ -61,6 +61,16 @@ st.markdown("""
 
     </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+    <div class="top-nav">
+        <a href="/" target="_self">Home</a>
+        <a href="/growth" target="_self">Growth</a>
+        <a href="/Inflation_outlook" target="_self">Inflation</a>
+        <a href="/Risk_on_off" target="_self">Risk On/Off</a>
+        <a href="/Sector_Business_Cycle" target="_self">Business Cycle</a>
+        <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
+    </div>
+""", unsafe_allow_html=True)
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
