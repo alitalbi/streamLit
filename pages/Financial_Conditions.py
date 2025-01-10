@@ -13,9 +13,9 @@ from functools import reduce
 import plotly.express as px
 import time
 from pandas.tseries.offsets import BDay
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.linear_model import RidgeCV, LassoCV
-from sklearn.metrics import mean_squared_error, r2_score
+from scikit-learn.model_selection import TimeSeriesSplit
+from scikit-learn.linear_model import RidgeCV, LassoCV
+from scikit-learn.metrics import mean_squared_error, r2_score
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 def agg_zscore(df):
