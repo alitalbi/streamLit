@@ -109,12 +109,18 @@ proxy_return = yf.download(list(fin_conditions_tickers.values()), start=date_sta
 indicators = ["DXY","10Y","Gasoline"]
 proxy_return.columns = ["DXY","10Y","Gasoline"]
 
+col1,col2 = st.columns(2,gap="small")
+with col1:
+    ret_rolling_window = st.select_slider("Return period ",options=["1d","1w","1m","3m","6m"])
+    window_ret = 1 if ret_rolling_window == "1d" else 5 if ret_rolling_window == "1w" else 22 if ret_rolling_window == "1m" else 66 if ret_rolling_window == "3m" else 132
+with col2:
+    z_rolling_window = st.select_slider("Score Rolling window (in m)",options=["1","2","3","6","12","18","24"])
 # rolling_z = proxy_return.copy()
 for col in proxy_return.columns :
-    proxy_return["return_"+col] = proxy_return[col].pct_change(1)
-rolling_window = st.select_slider("Rolling window (in m)",options=["1","2","3","6","12","18","24"])
+    proxy_return["return_"+col] = proxy_return[col].pct_change(window_ret)
+
 for col in indicators :
-    proxy_return["z"+col] = (proxy_return["return_"+col] - proxy_return["return_"+col].rolling(int(rolling_window)*22).mean())/proxy_return["return_"+col].rolling(int(rolling_window)*22).std()
+    proxy_return["z"+col] = (proxy_return["return_"+col] - proxy_return["return_"+col].rolling(int(z_rolling_window)*22).mean())/proxy_return["return_"+col].rolling(int(z_rolling_window   )*22).std()
 proxy_return["agg_z"] = proxy_return[proxy_return.columns[-3:]].mean(axis=1)
 proxy_return.dropna(inplace=True)
 agg_table_score = proxy_return[["zDXY","z10Y","zGasoline","agg_z"]][::-1].head(30).style.applymap(color_scale)
