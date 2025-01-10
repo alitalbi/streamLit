@@ -112,10 +112,9 @@ proxy_return.columns = ["DXY","10Y","Gasoline"]
 # rolling_z = proxy_return.copy()
 for col in proxy_return.columns :
     proxy_return["return_"+col] = proxy_return[col].pct_change(1)
-
+rolling_window = st.select_slider("Rolling window (in m)",options=["1","2","3","6","12","18","24"])
 for col in indicators :
-    proxy_return["z"+col] = (proxy_return["return_"+col] - proxy_return["return_"+col].rolling(20).mean())/proxy_return["return_"+col].rolling(20).std()
-
+    proxy_return["z"+col] = (proxy_return["return_"+col] - proxy_return["return_"+col].rolling(int(rolling_window)*22).mean())/proxy_return["return_"+col].rolling(int(rolling_window)*22).std()
 proxy_return["agg_z"] = proxy_return[proxy_return.columns[-3:]].mean(axis=1)
 proxy_return.dropna(inplace=True)
 agg_table_score = proxy_return[["zDXY","z10Y","zGasoline","agg_z"]][::-1].head(30).style.applymap(color_scale)
