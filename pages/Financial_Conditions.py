@@ -13,7 +13,11 @@ from functools import reduce
 import plotly.express as px
 import time
 from pandas.tseries.offsets import BDay
-
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.linear_model import RidgeCV, LassoCV
+from sklearn.metrics import mean_squared_error, r2_score
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 def agg_zscore(df):
     
     df["mean"] = df.mean(axis=1)
@@ -121,6 +125,7 @@ for col in proxy_return.columns :
 
 for col in indicators :
     proxy_return["z"+col] = (proxy_return["return_"+col] - proxy_return["return_"+col].rolling(int(z_rolling_window)*22).mean())/proxy_return["return_"+col].rolling(int(z_rolling_window   )*22).std()
+
 proxy_return["agg_z"] = proxy_return[proxy_return.columns[-3:]].mean(axis=1)
 proxy_return.dropna(inplace=True)
 agg_table_score = proxy_return[["zDXY","z10Y","zGasoline","agg_z"]][::-1].head(30).style.applymap(color_scale)
@@ -144,3 +149,135 @@ else:
 
 st.plotly_chart(fig,use_container_width=True)
 st.dataframe(agg_table_score)
+
+
+
+# Generate synthetic data with realistic financial properties
+np.random.seed(42)
+
+df= yf.download(list(fin_conditions_tickers.values())+["^GSPC"], start=date_start, end=date_end, interval="1d")["Adj Close"].sort_values(by="Date")
+# Features (X) and Target (y)
+df = df.pct_change(1)
+df
+df.dropna(inplace=True)
+df.columns = ["DXY","10Y","Gasoline","SPY"]
+X = df[["Gasoline", "DXY", "10Y"]]
+y = df["SPY"]
+
+# Train-Test Split using TimeSeriesSplit
+n_splits = 5
+tscv = TimeSeriesSplit(n_splits=n_splits)
+
+out_of_sample_results = []
+
+for train_index, test_index in tscv.split(X):
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+    # Regularized Regression using RidgeCV and LassoCV
+    alphas = np.logspace(-6, 6, 100)
+    ridge = RidgeCV(alphas=alphas, cv=tscv).fit(X_train, y_train)
+    lasso = LassoCV(alphas=alphas, cv=tscv).fit(X_train, y_train)
+
+    # Predict on the out-of-sample set
+    ridge_pred = ridge.predict(X_test)
+    lasso_pred = lasso.predict(X_test)
+
+    # Evaluate models
+    ridge_mse = mean_squared_error(y_test, ridge_pred)
+    lasso_mse = mean_squared_error(y_test, lasso_pred)
+
+    ridge_r2 = r2_score(y_test, ridge_pred)
+    lasso_r2 = r2_score(y_test, lasso_pred)
+
+    # Store results for plotting
+    out_of_sample_results.append({
+        "ridge_pred": ridge_pred,
+        "lasso_pred": lasso_pred,
+        "y_test": y_test,
+        "ridge_mse": ridge_mse,
+        "lasso_mse": lasso_mse,
+        "ridge_r2": ridge_r2,
+        "lasso_r2": lasso_r2,
+        "timestamps": X_test.index
+    })
+
+# Statistical tests for assumptions
+X_with_const = sm.add_constant(X)  # Add intercept for statsmodels
+ols_model = sm.OLS(y, X_with_const).fit()
+
+# Multicollinearity: Variance Inflation Factor (VIF)
+vif_data = pd.DataFrame()
+vif_data["feature"] = X.columns
+vif_data["VIF"] = [variance_inflation_factor(X_with_const.values, i + 1) for i in range(X.shape[1])]
+
+# Streamlit App
+st.title("Enhanced Regression Model Performance")
+
+st.header("Model Coefficients")
+st.write("Ridge Regression Coefficients")
+st.write({feature: coef for feature, coef in zip(X.columns, ridge.coef_)})
+
+st.write("Lasso Regression Coefficients")
+st.write({feature: coef for feature, coef in zip(X.columns, lasso.coef_)})
+
+# st.header("Performance Metrics")
+
+
+# st.header("Multicollinearity (VIF)")
+# st.write(vif_data)
+
+st.header("Out-of-Sample Performance")
+
+# Plot only the out-of-sample performance
+for i, result in enumerate(out_of_sample_results):
+    fig = go.Figure()
+    # Adding prediction for tomorrow based on last data point
+last_data_point = X.iloc[-1].values.reshape(1, -1)  # Get the last available data point
+
+# Predict tomorrow's return using Ridge and Lasso
+ridge_tomorrow_pred = ridge.predict(last_data_point)[0]
+lasso_tomorrow_pred = lasso.predict(last_data_point)[0]
+
+# Append tomorrow's prediction to the respective prediction arrays
+ridge_pred_with_tomorrow = np.append(ridge_pred, ridge_tomorrow_pred)
+lasso_pred_with_tomorrow = np.append(lasso_pred, lasso_tomorrow_pred)
+
+# Create a plot for Out-of-Sample Performance with dashed lines for tomorrow's prediction
+fig = go.Figure()
+
+# Plot actual returns
+fig.add_trace(go.Scatter(x=result['timestamps'], y=result['y_test'], mode='lines', name='Actual Returns'))
+
+# Plot Ridge and Lasso predictions
+fig.add_trace(go.Scatter(x=result['timestamps'], y=ridge_pred_with_tomorrow, mode='lines', name='Ridge Predictions'))
+fig.add_trace(go.Scatter(x=result['timestamps'], y=lasso_pred_with_tomorrow, mode='lines', name='Lasso Predictions'))
+
+# Plot tomorrow's prediction (use a dashed line for distinction)
+tomorrow_date = X.index[-1] + timedelta(days=1)
+fig.add_trace(go.Scatter(x=[tomorrow_date], y=[ridge_tomorrow_pred], mode='markers+text', 
+                         name="Ridge Tomorrow", text=["Ridge Tomorrow"], 
+                         marker=dict(symbol='circle', color='red', size=10), 
+                         line=dict(dash='dash')))
+
+fig.add_trace(go.Scatter(x=[tomorrow_date], y=[lasso_tomorrow_pred], mode='markers+text', 
+                         name="Lasso Tomorrow", text=["Lasso Tomorrow"], 
+                         marker=dict(symbol='circle', color='blue', size=10), 
+                         line=dict(dash='dash')))
+
+# Update the layout
+fig.update_layout(
+    title="Out-of-Sample Performance with Tomorrow's Prediction",
+    xaxis_title="Time",
+    yaxis_title="Returns",
+    legend_title="Legend",
+    template="plotly_white"
+)
+
+# Display the plot in Streamlit
+st.plotly_chart(fig)
+   
+# Save models (for production use)
+for i, result in enumerate(out_of_sample_results):
+    st.write(f"Fold {i + 1}: Ridge MSE: {result['ridge_mse']:.4f}, R^2: {result['ridge_r2']:.4f}")
+    st.write(f"Fold {i + 1}: Lasso MSE: {result['lasso_mse']:.4f}, R^2: {result['lasso_r2']:.4f}")
