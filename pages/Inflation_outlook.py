@@ -87,7 +87,7 @@ if custom_date:
 
 def score_table(index, data_, data_10):
     bool_values = {True:1,False:0}
-    score_table = pd.DataFrame.from_dict({"trend vs history ": bool_values[data_["_6m_smoothing_growth"][-1] > data_10["1 yr average"][-1]],
+    score_table = pd.DataFrame.from_dict({"trend vs history ": bool_values[data_["_6m_smoothing_growth"][-1] > data_10["10 yr average"][-1]],
                                           "growth": bool_values[data_["_6m_smoothing_growth"][-1] > 0],
                                           "Direction of Trend": bool_values[data_["_6m_smoothing_growth"].diff()[-1]>0]}, orient="index").T
     score_table['Score'] = score_table.sum(axis=1)
@@ -121,25 +121,27 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
 
     data_2 = data_2.loc[(data_2.index > date_start2) & (data_2.index < date_end)]
     data_2.index = pd.to_datetime(data_2.index)
-    # creating 6m smoothing growth column and 1 yr average column
+    # creating 6m smoothing growth column and 10 yr average column
     # Calculate the smoothed average
     
-    smoothed_3m = data_.iloc[:, 0].rolling(3).mean()
-    smoothed_6m = data_.iloc[:, 0].rolling(6).mean()
-    smoothed_12m = data_.iloc[:, 0].rolling(12).mean()
+
 
     # Calculate the annualized growth rate
-    annualized_3m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_3m) ** 4 - 1
-    annualized_6m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_6m) ** 2 - 1
-    annualized_12m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_12m) - 1
+    annualized_3m_smoothed_growth_rate = (1+data_.pct_change(3)) ** 4 - 1
+
+    annualized_6m_smoothed_growth_rate = (1+data_.pct_change(6)) ** 2 - 1
+    annualized_12m_smoothed_growth_rate = (1+data_.pct_change(12)) ** 1 - 1
     # Multiply the result by 100 and store it in the _6m_smoothing_growth column
-    data_['_3m_smoothing_growth'] = 100 * annualized_3m_smoothed_growth_rate
+    data_['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
     data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
     data_['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
-    data_2['mom_average'] = data_2.iloc[:, 0].pct_change(periods=1)
-    data_2['1 yr average'] = data_2['mom_average'].rolling(12).mean()*100 
+    data_2['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
+    data_2['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+    data_2['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
+    data_2['10 yr average'] = data_2['_6m_smoothing_growth'].rolling(120).mean() 
     data_.dropna(inplace=True)
     data_2.dropna(inplace=True)
+    
     return data_,data_2
 
 
@@ -151,7 +153,7 @@ def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
     data_.index = pd.to_datetime(data_.index).tz_localize(None)
 
-    # creating 6m smoothing growth column and 1 yr average column
+    # creating 6m smoothing growth column and 10 yr average column
     # Calculate the smoothed average
     data_["average"] = data_.rolling(66).mean()
 
@@ -186,14 +188,14 @@ cpi, cpi_10 = smooth_data("CPIAUCSL", date_start, date_start2, date_end)
 
 shelter_prices, shelter_prices_10 = smooth_data("CUSR0000SAH1", date_start, date_start2, date_end)
 shelter_prices["_3m_smoothing_growth"],shelter_prices["_6m_smoothing_growth"],shelter_prices["_12m_smoothing_growth"] = shelter_prices[["_3m_smoothing_growth"]] - cpi[["_3m_smoothing_growth"]],shelter_prices[["_6m_smoothing_growth"]] - cpi[["_6m_smoothing_growth"]],shelter_prices[["_12m_smoothing_growth"]] - cpi[["_12m_smoothing_growth"]]
-shelter_prices_10 = shelter_prices_10[['1 yr average']] - cpi_10[['1 yr average']]
+shelter_prices_10 = shelter_prices_10[['10 yr average']] - cpi_10[['10 yr average']]
 
 
 wages, wages_10 = smooth_data("CES0500000003", date_start, date_start2, date_end)
 wages["_3m_smoothing_growth"] = wages["_3m_smoothing_growth"]- cpi["_3m_smoothing_growth"]
 wages["_6m_smoothing_growth"] = wages["_6m_smoothing_growth"]- cpi["_6m_smoothing_growth"]
 wages["_12m_smoothing_growth"] = wages["_12m_smoothing_growth"]- cpi["_12m_smoothing_growth"]
-wages_10 = wages_10[['1 yr average']] - cpi_10[['1 yr average']]
+wages_10 = wages_10[['10 yr average']] - cpi_10[['10 yr average']]
 
 core_cpi, core_cpi_10 = smooth_data("CPILFESL", date_start, date_start2, date_end)
 core_pce, core_pce_10 = smooth_data("PCEPILFE", date_start, date_start2, date_end)
@@ -233,9 +235,9 @@ fig_secular_trends.add_trace(
     go.Scatter(x=cpi.index.to_list(), y=cpi._12m_smoothing_growth/100, name="12m growth average",
                mode="lines", line=dict(width=2,color='red')), secondary_y=False, row=1, col=1)
 fig_secular_trends.add_trace(go.Scatter(x=(cpi_10.index.to_list()),
-                                        y=(cpi_10['1 yr average']) / 100, mode="lines",
+                                        y=(cpi_10['10 yr average']) / 100, mode="lines",
                                         line=dict(width=2, color='green'),
-                                        name="1 yr average"), secondary_y=False, row=1, col=1)
+                                        name="10 yr average"), secondary_y=False, row=1, col=1)
 
 fig_secular_trends.add_trace(
     go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._3m_smoothing_growth/100, name="3m growth average",
@@ -250,9 +252,9 @@ fig_secular_trends.add_trace(
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=1,
     col=2)
 fig_secular_trends.add_trace(go.Scatter(x=(core_cpi_10.index.to_list()),
-                                        y=core_cpi_10['1 yr average'] / 100,
+                                        y=core_cpi_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="1 yr average", showlegend=False), secondary_y=False, row=1, col=2)
+                                        name="10 yr average", showlegend=False), secondary_y=False, row=1, col=2)
 
 fig_secular_trends.add_trace(
     go.Scatter(x=pcec96.index.to_list(), y=pcec96._3m_smoothing_growth/100, name="3m growth average",
@@ -267,9 +269,9 @@ fig_secular_trends.add_trace(
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=2,
     col=1)
 fig_secular_trends.add_trace(go.Scatter(x=(pcec96_10.index.to_list()),
-                                        y=pcec96_10['1 yr average'] / 100,
+                                        y=pcec96_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="1 yr average", showlegend=False), secondary_y=False, row=2, col=1)
+                                        name="10 yr average", showlegend=False), secondary_y=False, row=2, col=1)
 
 fig_secular_trends.add_trace(
     go.Scatter(x=core_pce.index.to_list(), y=core_pce._3m_smoothing_growth/100, name="3m growth average",
@@ -281,9 +283,9 @@ fig_secular_trends.add_trace(
     go.Scatter(x=core_pce.index.to_list(), y=core_pce._12m_smoothing_growth/100, name="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=2, col=2)
 fig_secular_trends.add_trace(go.Scatter(x=(core_pce_10.index.to_list()),
-                                        y=core_pce_10['1 yr average'] / 100,
+                                        y=core_pce_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="1 yr average", showlegend=False), secondary_y=False, row=2, col=2)
+                                        name="10 yr average", showlegend=False), secondary_y=False, row=2, col=2)
 fig_secular_trends.add_trace(
         go.Scatter(x=shelter_prices.index.to_list(), y=shelter_prices._3m_smoothing_growth/100,
                name="3m growth average",
@@ -301,9 +303,9 @@ fig_secular_trends.add_trace(
     col=1)
 
 fig_secular_trends.add_trace(go.Scatter(x=(shelter_prices_10.index.to_list()),
-                                        y=shelter_prices_10['1 yr average'] / 100,
+                                        y=shelter_prices_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="1 yr average", showlegend=False), secondary_y=False, row=3, col=1)
+                                        name="10 yr average", showlegend=False), secondary_y=False, row=3, col=1)
 
 fig_secular_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(),
@@ -325,8 +327,8 @@ fig_secular_trends.add_trace(
     col=2)
 fig_secular_trends.add_trace(
     go.Scatter(x=employment_level_10.index.to_list(),
-               y=employment_level_10["1 yr average"]/100,
-               name="1 yr average",
+               y=employment_level_10["10 yr average"]/100,
+               name="10 yr average",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), secondary_y=False, row=3,
     col=2)
 
@@ -350,8 +352,8 @@ fig_secular_trends.add_trace(
     col=1)
 fig_secular_trends.add_trace(
     go.Scatter(x=wages_10.index.to_list(),
-               y=wages_10["1 yr average"]/100,
-               name="1 yr average",
+               y=wages_10["10 yr average"]/100,
+               name="10 yr average",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), secondary_y=False, row=4,
     col=1)
 fig_secular_trends.update_layout(template="plotly_dark",
@@ -479,34 +481,34 @@ wages_displayed = wages.loc[(wages.index > data_displayed) & (wages.index < date
 wages_10_displayed = wages_10.loc[(wages_10.index > data_displayed) & (wages_10.index < date_end)]
 
 
-fig_secular_trends.layout.yaxis.range = [min(min(cpi_10_displayed['1 yr average']),min(cpi_displayed._3m_smoothing_growth),
+fig_secular_trends.layout.yaxis.range = [min(min(cpi_10_displayed['10 yr average']),min(cpi_displayed._3m_smoothing_growth),
                                                      min(cpi_displayed._6m_smoothing_growth),
-                                                     min(cpi_displayed._12m_smoothing_growth))/100, max(max(pcec96_10_displayed['1 yr average']),max(cpi_displayed._3m_smoothing_growth),
+                                                     min(cpi_displayed._12m_smoothing_growth))/100, max(max(pcec96_10_displayed['10 yr average']),max(cpi_displayed._3m_smoothing_growth),
                                                      max(cpi_displayed._6m_smoothing_growth),
                                                      max(cpi_displayed._12m_smoothing_growth))/100]
 
 
-fig_secular_trends.layout.yaxis3.range = [min(min(core_cpi_10_displayed['1 yr average']),min(core_cpi_displayed._3m_smoothing_growth),
+fig_secular_trends.layout.yaxis3.range = [min(min(core_cpi_10_displayed['10 yr average']),min(core_cpi_displayed._3m_smoothing_growth),
                                                      min(core_cpi_displayed._6m_smoothing_growth),
-                                                     min(core_cpi_displayed._12m_smoothing_growth))/100, max(max(core_cpi_10_displayed['1 yr average']),max(core_cpi_displayed._3m_smoothing_growth),
+                                                     min(core_cpi_displayed._12m_smoothing_growth))/100, max(max(core_cpi_10_displayed['10 yr average']),max(core_cpi_displayed._3m_smoothing_growth),
                                                      max(core_cpi_displayed._6m_smoothing_growth),
                                                      max(core_cpi_displayed._12m_smoothing_growth))/100]
 
 
-fig_secular_trends.layout.yaxis5.range = [min(min(pcec96_10_displayed['1 yr average']),min(pcec96_displayed._3m_smoothing_growth),
+fig_secular_trends.layout.yaxis5.range = [min(min(pcec96_10_displayed['10 yr average']),min(pcec96_displayed._3m_smoothing_growth),
                                                      min(pcec96_displayed._6m_smoothing_growth),
-                                                     min(pcec96_displayed._12m_smoothing_growth))/100, max(max(pcec96_10_displayed['1 yr average']),max(pcec96_displayed._3m_smoothing_growth),
+                                                     min(pcec96_displayed._12m_smoothing_growth))/100, max(max(pcec96_10_displayed['10 yr average']),max(pcec96_displayed._3m_smoothing_growth),
                                                      max(pcec96_displayed._6m_smoothing_growth),
                                                      max(pcec96_displayed._12m_smoothing_growth))/100]
 
-fig_secular_trends.layout.yaxis7.range = [min(min(core_pce_10_displayed['1 yr average']),min(core_pce_displayed._3m_smoothing_growth),
+fig_secular_trends.layout.yaxis7.range = [min(min(core_pce_10_displayed['10 yr average']),min(core_pce_displayed._3m_smoothing_growth),
                                                      min(core_pce_displayed._6m_smoothing_growth),
-                                                     min(core_pce_displayed._12m_smoothing_growth))/100, max(max(core_pce_10_displayed['1 yr average']),max(core_pce_displayed._3m_smoothing_growth),
+                                                     min(core_pce_displayed._12m_smoothing_growth))/100, max(max(core_pce_10_displayed['10 yr average']),max(core_pce_displayed._3m_smoothing_growth),
                                                      max(core_pce_displayed._6m_smoothing_growth),
                                                      max(core_pce_displayed._12m_smoothing_growth))/100]
-fig_secular_trends.layout.yaxis9.range = [min(min(shelter_prices_10_displayed['1 yr average']),min(shelter_prices_displayed._3m_smoothing_growth),
+fig_secular_trends.layout.yaxis9.range = [min(min(shelter_prices_10_displayed['10 yr average']),min(shelter_prices_displayed._3m_smoothing_growth),
                                                      min(shelter_prices_displayed._6m_smoothing_growth),
-                                                     min(shelter_prices_displayed._12m_smoothing_growth))/100, max(max(shelter_prices_10_displayed['1 yr average']),max(shelter_prices_displayed._3m_smoothing_growth),
+                                                     min(shelter_prices_displayed._12m_smoothing_growth))/100, max(max(shelter_prices_10_displayed['10 yr average']),max(shelter_prices_displayed._3m_smoothing_growth),
                                                      max(shelter_prices_displayed._6m_smoothing_growth),
                                                      max(shelter_prices_displayed._12m_smoothing_growth))/100]
 fig_secular_trends.layout.yaxis11.range = [min(min(employment_level_displayed._3m_smoothing_growth),
@@ -514,12 +516,13 @@ fig_secular_trends.layout.yaxis11.range = [min(min(employment_level_displayed._3
                                                      min(employment_level_displayed._12m_smoothing_growth))/100, max(max(employment_level_displayed._3m_smoothing_growth),
                                                      max(employment_level_displayed._6m_smoothing_growth),
                                                      max(employment_level_displayed._12m_smoothing_growth))/100]
-fig_secular_trends.layout.yaxis13.range = [min(min(shelter_prices_10_displayed['1 yr average']),min(wages_displayed._3m_smoothing_growth),
+fig_secular_trends.layout.yaxis13.range = [min(min(shelter_prices_10_displayed['10 yr average']),min(wages_displayed._3m_smoothing_growth),
                                                      min(wages_displayed._6m_smoothing_growth),
-                                                     min(wages_displayed._12m_smoothing_growth))/100, max(max(wages_10_displayed['1 yr average']),max(wages_displayed._3m_smoothing_growth),
+                                                     min(wages_displayed._12m_smoothing_growth))/100, max(max(wages_10_displayed['10 yr average']),max(wages_displayed._3m_smoothing_growth),
                                                      max(wages_displayed._6m_smoothing_growth),
                                                      max(wages_displayed._12m_smoothing_growth))/100]
 
 st.plotly_chart(fig_secular_trends_2, use_container_width=True)
 st.dataframe(score_table_merged_infla.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
 st.plotly_chart(fig_secular_trends, use_container_width=True)
+
