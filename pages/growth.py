@@ -90,7 +90,7 @@ if custom_date:
 
 def score_table(index, data_, data_10):
     bool_values = {True:1,False:0}
-    score_table = pd.DataFrame.from_dict({"trend vs history ": bool_values[data_["_6m_smoothing_growth"][-1] > data_10["1 yr average"][-1]],
+    score_table = pd.DataFrame.from_dict({"trend vs history ": bool_values[data_["_6m_smoothing_growth"][-1] > data_10["10 yr average"][-1]],
                                           "growth": bool_values[data_["_6m_smoothing_growth"][-1] > 0],
                                           "Direction of Trend": bool_values[data_["_6m_smoothing_growth"].diff()[-1]>0]}, orient="index").T
     score_table['Score'] = score_table.sum(axis=1)
@@ -125,26 +125,25 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
 
     data_2 = data_2.loc[(data_2.index > date_start2) & (data_2.index < date_end)]
     data_2.index = pd.to_datetime(data_2.index)
-    # creating 6m smoothing growth column and 1 yr average column
+    # creating 6m smoothing growth column and 10 yr average column
     # Calculate the smoothed average
     
-    smoothed_3m = data_.iloc[:, 0].rolling(3).mean()
-    smoothed_6m = data_.iloc[:, 0].rolling(6).mean()
-    smoothed_12m = data_.iloc[:, 0].rolling(12).mean()
-
+ 
     # Calculate the annualized growth rate
-    annualized_3m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_3m) ** 4 - 1
-    annualized_6m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_6m) ** 2 - 1
-    annualized_12m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_12m) - 1
+    annualized_3m_smoothed_growth_rate = (1+data_.pct_change(3)) ** 4 - 1
+    annualized_6m_smoothed_growth_rate = (1+data_.pct_change(6)) ** 2 - 1
+    annualized_12m_smoothed_growth_rate = (1+data_.pct_change(12)) ** 1 - 1
     # Multiply the result by 100 and store it in the _6m_smoothing_growth column
-    data_['_3m_smoothing_growth'] = 100 * annualized_3m_smoothed_growth_rate
+    data_['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
     data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
     data_['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
-    data_2['mom_average'] = data_2.iloc[:, 0].pct_change(periods=1)
-    data_2['1 yr average'] = data_2['mom_average'].rolling(12).mean() *100
+    data_2['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
+    data_2['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+    data_2['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
+    data_2['10 yr average'] = data_2['_6m_smoothing_growth'].rolling(120).mean() 
     data_.dropna(inplace=True)
     data_2.dropna(inplace=True)
-
+    
     return data_,data_2
 @limits(calls=15,period=900)
 def get_cli_data():
@@ -153,7 +152,7 @@ def get_cli_data():
 def data_smooth(data_,date_start,date_end):
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
     #data_.index = pd.to_datetime(data_.index).dt.date()
-    # creating 6m smoothing growth column and 1 yr average column
+    # creating 6m smoothing growth column and 10 yr average column
     # Calculate the smoothed average
     average = data_.iloc[:, 0].rolling(11).mean()
     shifted = data_.iloc[:, 0].shift(11)
@@ -218,13 +217,13 @@ composite_data.dropna(inplace=True)
 composite_growth = pd.DataFrame(composite_data.mean(axis=1))
 composite_growth.columns = ["_6m_smoothing_growth"]
 composite_growth_10 = pd.concat(
-    [pce96_10[['1 yr average']], indpro_10[['1 yr average']], nonfarm_10[['1 yr average']],
-     real_pers_10[['1 yr average']], retail_sales_10[['1 yr average']],
-     employment_level_10[['1 yr average']]],
+    [pce96_10[['10 yr average']], indpro_10[['10 yr average']], nonfarm_10[['10 yr average']],
+     real_pers_10[['10 yr average']], retail_sales_10[['10 yr average']],
+     employment_level_10[['10 yr average']]],
     axis=1)
 composite_growth_10.dropna(inplace=True)
 composite_growth_10 = pd.DataFrame(composite_growth_10.mean(axis=1))
-composite_growth_10.columns = ["1 yr average"]
+composite_growth_10.columns = ["10 yr average"]
 url = 'https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx'
 response = requests.get(url)
 atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
@@ -254,8 +253,8 @@ fig_.add_trace(go.Scatter(x=atlanta_gdp_now.index.to_list(), y=atlanta_gdp_now.i
                           name="Atlanta Fed GDP Nowcast",
                           mode="lines", line=dict(width=2, color='blue')))
 fig_.add_trace(go.Scatter(x=composite_growth_10.index.to_list(),
-                          y=composite_growth_10['1 yr average'] / 100,
-                          name="1 yr average",
+                          y=composite_growth_10['10 yr average'] / 100,
+                          name="10 yr average",
                           mode="lines", line=dict(width=2, color='green')))
 
 fig_.update_layout(
@@ -278,8 +277,8 @@ atlanta_displayed = atlanta_gdp_now.loc[(atlanta_gdp_now.index > data_displayed)
 qs=atlanta_gdp_now.loc[(atlanta_gdp_now.index > np.datetime64(date_start)) & (atlanta_gdp_now.index < np.datetime64(date_end))]
 
 fig_.update_layout(  # customize font and legend orientation & position
-    yaxis=dict(tickformat=".1%",range=[min(min(composite_displayed._6m_smoothing_growth),min(atlanta_displayed.iloc[:,0]),min(composite_10_displayed["1 yr average"]))/100,
-                           max(max(composite_displayed._6m_smoothing_growth),max(atlanta_displayed.iloc[:,0]),max(composite_10_displayed["1 yr average"]))/100]),
+    yaxis=dict(tickformat=".1%",range=[min(min(composite_displayed._6m_smoothing_growth),min(atlanta_displayed.iloc[:,0]),min(composite_10_displayed["10 yr average"]))/100,
+                           max(max(composite_displayed._6m_smoothing_growth),max(atlanta_displayed.iloc[:,0]),max(composite_10_displayed["10 yr average"]))/100]),
 
     title_font_family="Arial Black",
     font=dict(
@@ -302,9 +301,9 @@ fig_cyclical_trends.add_trace(
     go.Scatter(x=pce96.index.to_list(), y=pce96._12m_smoothing_growth / 100, name="12m growth average",
                mode="lines", line=dict(width=2,color='red')), row=1, col=1)
 fig_cyclical_trends.add_trace(go.Scatter(x=(pce96_10.index.to_list()),
-                                         y=(pce96_10['1 yr average']) / 100, mode="lines",
+                                         y=(pce96_10['10 yr average']) / 100, mode="lines",
                                          line=dict(width=2, color='green'),
-                                         name="1 yr average"), row=1, col=1)
+                                         name="10 yr average"), row=1, col=1)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=indpro.index.to_list(), y=indpro._3m_smoothing_growth / 100, name="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=1, col=2)
@@ -315,9 +314,9 @@ fig_cyclical_trends.add_trace(
     go.Scatter(x=indpro.index.to_list(), y=indpro._12m_smoothing_growth / 100, name="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=1, col=2)
 fig_cyclical_trends.add_trace(go.Scatter(x=(indpro_10.index.to_list()),
-                                         y=indpro_10['1 yr average'] / 100, line=dict(width=2, color='green'),
+                                         y=indpro_10['10 yr average'] / 100, line=dict(width=2, color='green'),
                                          mode="lines",
-                                         name="1 yr average", showlegend=False), row=1, col=2)
+                                         name="10 yr average", showlegend=False), row=1, col=2)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._3m_smoothing_growth / 100, name="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=2, col=1)
@@ -328,9 +327,9 @@ fig_cyclical_trends.add_trace(
     go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._12m_smoothing_growth / 100, name="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=2, col=1)
 fig_cyclical_trends.add_trace(go.Scatter(x=(nonfarm_10.index.to_list()),
-                                         y=nonfarm_10['1 yr average'] / 100, line=dict(width=2, color='green'),
+                                         y=nonfarm_10['10 yr average'] / 100, line=dict(width=2, color='green'),
                                          mode="lines",
-                                         name="1 yr average", showlegend=False), row=2, col=1)
+                                         name="10 yr average", showlegend=False), row=2, col=1)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=real_pers.index.to_list(), y=real_pers._3m_smoothing_growth / 100, name="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=2, col=2)
@@ -341,10 +340,10 @@ fig_cyclical_trends.add_trace(
     go.Scatter(x=real_pers.index.to_list(), y=real_pers._12m_smoothing_growth / 100, name="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=2, col=2)
 fig_cyclical_trends.add_trace(go.Scatter(x=(real_pers_10.index.to_list()),
-                                         y=real_pers_10['1 yr average'] / 100,
+                                         y=real_pers_10['10 yr average'] / 100,
                                          line=dict(width=2, color='green'),
                                          mode="lines",
-                                         name="1 yr average", showlegend=False), row=2, col=2)
+                                         name="10 yr average", showlegend=False), row=2, col=2)
 
 fig_cyclical_trends.add_trace(
     go.Scatter(x=retail_sales.index.to_list(), y=retail_sales._3m_smoothing_growth / 100,
@@ -359,9 +358,9 @@ fig_cyclical_trends.add_trace(
                name="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=3, col=1)
 fig_cyclical_trends.add_trace(go.Scatter(x=(retail_sales_10.index.to_list()),
-                                         y=retail_sales_10['1 yr average'] / 100,
+                                         y=retail_sales_10['10 yr average'] / 100,
                                          line=dict(width=2, color='green'), mode="lines",
-                                         name="1 yr average", showlegend=False), row=3, col=1)
+                                         name="10 yr average", showlegend=False), row=3, col=1)
 
 fig_cyclical_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(), y=employment_level._3m_smoothing_growth / 100,
@@ -376,9 +375,9 @@ fig_cyclical_trends.add_trace(
                name="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=3, col=2)
 fig_cyclical_trends.add_trace(go.Scatter(x=(employment_level_10.index.to_list()),
-                                         y=employment_level_10['1 yr average'] / 100,
+                                         y=employment_level_10['10 yr average'] / 100,
                                          line=dict(width=2, color='green'), mode="lines",
-                                         name="1 yr average", showlegend=False), row=3, col=2)
+                                         name="10 yr average", showlegend=False), row=3, col=2)
 
 fig_cyclical_trends.update_layout(template="plotly_dark",
                                   height=1000, width=1500)
@@ -429,32 +428,32 @@ employment_level_displayed  = employment_level.loc[(employment_level.index > dat
 employment_level_10_displayed = employment_level_10.loc[(employment_level_10.index > data_displayed) & (employment_level_10.index < date_end)]
 
 
-fig_cyclical_trends.layout.yaxis.range = [min(min(pce_10_displayed['1 yr average']),min(pce_displayed._3m_smoothing_growth),
+fig_cyclical_trends.layout.yaxis.range = [min(min(pce_10_displayed['10 yr average']),min(pce_displayed._3m_smoothing_growth),
                                                      min(pce_displayed._6m_smoothing_growth),
                                                      min(pce_displayed._12m_smoothing_growth))/100, max(max(pce_displayed._3m_smoothing_growth),
                                                      max(pce_displayed._6m_smoothing_growth),
                                                      max(pce_displayed._12m_smoothing_growth))/100]
-fig_cyclical_trends.layout.yaxis2.range = [min(min(indpro_10_displayed['1 yr average']),min(indpro_displayed._3m_smoothing_growth),
+fig_cyclical_trends.layout.yaxis2.range = [min(min(indpro_10_displayed['10 yr average']),min(indpro_displayed._3m_smoothing_growth),
                                                      min(indpro_displayed._6m_smoothing_growth),
                                                      min(indpro_displayed._12m_smoothing_growth))/100, max(max(indpro_displayed._3m_smoothing_growth),
                                                      max(indpro_displayed._6m_smoothing_growth),
                                                      max(indpro_displayed._12m_smoothing_growth))/100]
-fig_cyclical_trends.layout.yaxis3.range = [min(min(nonfarm_10_displayed['1 yr average']),min(nonfarm_displayed._3m_smoothing_growth),
+fig_cyclical_trends.layout.yaxis3.range = [min(min(nonfarm_10_displayed['10 yr average']),min(nonfarm_displayed._3m_smoothing_growth),
                                                      min(nonfarm_displayed._6m_smoothing_growth),
                                                      min(nonfarm_displayed._12m_smoothing_growth))/100, max(max(nonfarm_displayed._3m_smoothing_growth),
                                                      max(nonfarm_displayed._6m_smoothing_growth),
                                                      max(nonfarm_displayed._12m_smoothing_growth))/100]
-fig_cyclical_trends.layout.yaxis4.range = [min(min(real_pers_10_displayed['1 yr average']),min(real_pers_displayed._3m_smoothing_growth),
+fig_cyclical_trends.layout.yaxis4.range = [min(min(real_pers_10_displayed['10 yr average']),min(real_pers_displayed._3m_smoothing_growth),
                                                      min(real_pers_displayed._6m_smoothing_growth),
                                                      min(real_pers_displayed._12m_smoothing_growth))/100, max(max(real_pers_displayed._3m_smoothing_growth),
                                                      max(real_pers_displayed._6m_smoothing_growth),
                                                      max(real_pers_displayed._12m_smoothing_growth))/100]
-fig_cyclical_trends.layout.yaxis5.range = [min(min(retail_sales_10_displayed['1 yr average']),min(retail_sales_displayed._3m_smoothing_growth),
+fig_cyclical_trends.layout.yaxis5.range = [min(min(retail_sales_10_displayed['10 yr average']),min(retail_sales_displayed._3m_smoothing_growth),
                                                      min(retail_sales_displayed._6m_smoothing_growth),
                                                      min(retail_sales_displayed._12m_smoothing_growth))/100, max(max(retail_sales_displayed._3m_smoothing_growth),
                                                      max(retail_sales_displayed._6m_smoothing_growth),
                                                      max(retail_sales_displayed._12m_smoothing_growth))/100]
-fig_cyclical_trends.layout.yaxis6.range = [min(min(employment_level_10_displayed['1 yr average']),min(employment_level_displayed._3m_smoothing_growth),
+fig_cyclical_trends.layout.yaxis6.range = [min(min(employment_level_10_displayed['10 yr average']),min(employment_level_displayed._3m_smoothing_growth),
                                                      min(employment_level_displayed._6m_smoothing_growth),
                                                      min(employment_level_displayed._12m_smoothing_growth))/100, max(max(employment_level_displayed._3m_smoothing_growth),
                                                      max(employment_level_displayed._6m_smoothing_growth),
