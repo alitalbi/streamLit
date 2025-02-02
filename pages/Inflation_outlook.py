@@ -196,7 +196,7 @@ wages["_12m_smoothing_growth"] = wages["_12m_smoothing_growth"]- cpi["_12m_smoot
 wages_10 = wages_10[['1 yr average']] - cpi_10[['1 yr average']]
 
 core_cpi, core_cpi_10 = smooth_data("CPILFESL", date_start, date_start2, date_end)
-core_pce, core_pce_10 = smooth_data("DPCCRC1M027SBEA", date_start, date_start2, date_end)
+core_pce, core_pce_10 = smooth_data("PCEPILFE", date_start, date_start2, date_end)
 shelter_title = "Shelter Prices"
 wages_title = " Fred Wages"
 
