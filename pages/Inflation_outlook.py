@@ -544,7 +544,7 @@ st.plotly_chart(fig_secular_trends_2, use_container_width=True)
 st.dataframe(score_table_merged_infla.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
 st.plotly_chart(fig_secular_trends, use_container_width=True)
 st.write("Export Data : ")
-col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
+col1,col2,col3,col4,col5,col6,col7 = st.columns(7,gap="small")
 with col1:
     st.download_button("Infla",data=cpi_10.to_csv().encode("utf-8"),
                    file_name="Infla.csv")
@@ -563,4 +563,7 @@ with col5:
 with col6:
     st.download_button("Shelter Prices",data=shelter_prices_10.to_csv().encode("utf-8"),
                    file_name="Shelter_Prices.csv")
+with col7:
+    st.download_button("Employment",data=employment_level.to_csv().encode("utf-8"),
+                   file_name="employment.csv")
 
