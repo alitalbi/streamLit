@@ -405,6 +405,7 @@ agg_market_cycle_df.index = pd.Series(agg_market_cycle_df.index).apply(lambda x:
 agg_market_cycle_df = agg_market_cycle_df.loc[(agg_market_cycle_df.index > pd.Timestamp(start_date)) & (agg_market_cycle_df.index <= pd.Timestamp(end_date))]
 fig = go.Figure()
 
+
 if cycle_graph_choice == "Stacked Bar": 
 # Add traces for each category
     fig.add_trace(go.Bar(
@@ -413,21 +414,20 @@ if cycle_graph_choice == "Stacked Bar":
         name="Recession",
         marker=dict(color="red"),
         hoverinfo="x+y+name"
-    ))
-
-    fig.add_trace(go.Bar(
-        x=agg_market_cycle_df.index.to_list(),
-        y=agg_market_cycle_df["Recovery"],
-        name="Recovery",
-        marker=dict(color="white"),
-        hoverinfo="x+y+name"
-    ))
+    ))  
 
     fig.add_trace(go.Bar(
         x=agg_market_cycle_df.index.to_list(),
         y=agg_market_cycle_df["Slowdown"],
         name="Slowdown",
         marker=dict(color="orange"),
+        hoverinfo="x+y+name"
+    ))
+    fig.add_trace(go.Bar(
+        x=agg_market_cycle_df.index.to_list(),
+        y=agg_market_cycle_df["Recovery"],
+        name="Recovery",
+        marker=dict(color="white"),
         hoverinfo="x+y+name"
     ))
 
@@ -451,8 +451,8 @@ if cycle_graph_choice == "Stacked Bar":
 else:
 
 # Add traces for each category
-    categories = ["Recession", "Recovery", "Slowdown", "Expansion"]
-    colors = ["red", "white", "orange", "green"]
+    categories = ["Recession", "Slowdown","Recovery", "Expansion"]
+    colors = ["red", "orange", "white","green"]
 
     for category, color in zip(categories, colors):
         fig.add_trace(go.Scatter(
