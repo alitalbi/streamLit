@@ -515,5 +515,31 @@ for col in ['trend vs history ', 'growth', 'Direction of Trend']:
 
 # display the formatted table
 st.dataframe(score_table_merged.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
-st.plotly_chart(fig_, use_container_width=True)
+agg_composite_data = composite_displayed.join(atlanta_displayed).join(composite_10_displayed)
+st.download_button("Export Composite Growth Data",data=agg_composite_date.to_csv().encode("utf-8"),
+                   file_name="Composite_Growth.csv")
+
 st.plotly_chart(fig_cyclical_trends, use_container_width=True)
+st.write("Export Data : ")
+col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
+with col1:
+    st.download_button("PCE",data=pce96_10.to_csv().encode("utf-8"),
+                   file_name="PCE.csv")
+with col2:
+    st.download_button("Industrial Prod",data=indpro_10.to_csv().encode("utf-8"),
+                   file_name="Ind_Prod.csv")
+with col3:
+    st.download_button("NonFarm Payroll",data=nonfarm_10.to_csv().encode("utf-8"),
+                   file_name="NonfarmPayroll.csv")
+with col4:
+    st.download_button("Real Pers. Inc",data=real_pers_10.to_csv().encode("utf-8"),
+                   file_name="Real_Personal_Inc.csv")
+with col5:
+    st.download_button("Employment",data=employment_level_10.to_csv().encode("utf-8"),
+                   file_name="Employment.csv")
+with col6:
+    st.download_button("Retail Sales",data=retail_sales_10.to_csv().encode("utf-8"),
+                   file_name="Retail_Sales.csv")
+
+
+
