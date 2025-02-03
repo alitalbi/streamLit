@@ -78,7 +78,11 @@ st.markdown("""
 frequency = "monthly"
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 
-custom_date = st.checkbox("Use Custom Date")
+col1,col2 = st.columns(2,gap="small")
+with col1:
+    custom_date = st.checkbox("Use Custom Date")
+with col2:
+    mode = st.checkbox("Smoothen Data")
 date_start = pd.Timestamp(datetime.now() +BDay(-3650))
 data_displayed = pd.Timestamp(datetime.now()+BDay(-365))
 date_start2 = datetime.strptime("2004-01-01","%Y-%m-%d").date()
@@ -109,7 +113,7 @@ def filter_color(val):
     elif val == 3:
         return 'background-color: rgba(138, 255,0, 1)'
 
-def smooth_data(internal_ticker, date_start, date_start2, date_end):
+def smooth_data(internal_ticker, date_start, date_start2, date_end,mode):
     date_start= (datetime.strptime(date_start,"%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
     #print(date_start)
     data_ = pd.DataFrame(
@@ -128,19 +132,37 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end):
     # creating 6m smoothing growth column and 10 yr average column
     # Calculate the smoothed average
     
- 
+    if mode == 0:
     # Calculate the annualized growth rate
-    annualized_3m_smoothed_growth_rate = (1+data_.pct_change(3)) ** 4 - 1
-    annualized_6m_smoothed_growth_rate = (1+data_.pct_change(6)) ** 2 - 1
-    annualized_12m_smoothed_growth_rate = (1+data_.pct_change(12)) ** 1 - 1
-    # Multiply the result by 100 and store it in the _6m_smoothing_growth column
-    data_['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
-    data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
-    data_['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
-    data_2['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
-    data_2['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
-    data_2['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
-    data_2['10 yr average'] = data_2['_6m_smoothing_growth'].rolling(120).mean() 
+        annualized_3m_smoothed_growth_rate = (1+data_.pct_change(3)) ** 4 - 1
+        annualized_6m_smoothed_growth_rate = (1+data_.pct_change(6)) ** 2 - 1
+        annualized_12m_smoothed_growth_rate = (1+data_.pct_change(12)) ** 1 - 1
+        # Multiply the result by 100 and store it in the _6m_smoothing_growth column
+        data_['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
+        data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+        data_['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
+        data_2['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
+        data_2['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+        data_2['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
+        data_2['10 yr average'] = data_2['_6m_smoothing_growth'].rolling(120).mean() 
+    else:
+        smoothed_3m = data_.iloc[:, 0].rolling(3).mean()
+        smoothed_6m = data_.iloc[:, 0].rolling(6).mean()
+        smoothed_12m = data_.iloc[:, 0].rolling(12).mean()
+
+        # Calculate the annualized growth rate
+        annualized_3m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_3m) ** 4 - 1
+        annualized_6m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_6m) ** 2 - 1
+        annualized_12m_smoothed_growth_rate = (data_.iloc[:,0] / smoothed_12m) - 1
+        # Multiply the result by 100 and store it in the _6m_smoothing_growth column
+        data_['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
+        data_['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+        data_['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
+        data_2['_3m_smoothing_growth'] =  100 * annualized_3m_smoothed_growth_rate
+        data_2['_6m_smoothing_growth'] = 100 * annualized_6m_smoothed_growth_rate
+        data_2['_12m_smoothing_growth'] = 100 * annualized_12m_smoothed_growth_rate
+        data_2['10 yr average'] = data_2['_6m_smoothing_growth'].rolling(120).mean() 
+
     data_.dropna(inplace=True)
     data_2.dropna(inplace=True)
     
