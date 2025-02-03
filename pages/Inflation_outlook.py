@@ -199,27 +199,25 @@ oil= commo_smooth_data("CL=F", date_start,date_start2,date_end)
 cooper_prices= commo_smooth_data("HG=F", date_start,date_start2,date_end)
 
 # Data importing
-employment_level, employment_level_10 = smooth_data("CE16OV", date_start, date_start2, date_end)
+employment_level, employment_level_10 = smooth_data("CE16OV", date_start, date_start2, date_end,mode)
 employment_level.dropna(inplace=True)
 
-pcec96, pcec96_10 = smooth_data("PCEC96", date_start, date_start2, date_end)
-
-cpi, cpi_10 = smooth_data("CPIAUCSL", date_start, date_start2, date_end)
-# single_search, single_search_10 = smooth_data(ticker_fred, date_start, date_start2, date_end)
-
-shelter_prices, shelter_prices_10 = smooth_data("CUSR0000SAH1", date_start, date_start2, date_end)
+pcec96, pcec96_10 = smooth_data("PCEC96", date_start, date_start2, date_end,0)
+cpi, cpi_10 = smooth_data("CPIAUCSL", date_start, date_start2, date_end,0)
+# single_search, single_search_10 = smooth_data(ticker_fred, date_start, date_start2, date_end,mode)
+shelter_prices, shelter_prices_10 = smooth_data("CUSR0000SAH1", date_start, date_start2, date_end,mode)
 shelter_prices["_3m_smoothing_growth"],shelter_prices["_6m_smoothing_growth"],shelter_prices["_12m_smoothing_growth"] = shelter_prices[["_3m_smoothing_growth"]] - cpi[["_3m_smoothing_growth"]],shelter_prices[["_6m_smoothing_growth"]] - cpi[["_6m_smoothing_growth"]],shelter_prices[["_12m_smoothing_growth"]] - cpi[["_12m_smoothing_growth"]]
 shelter_prices_10 = shelter_prices_10[['10 yr average']] - cpi_10[['10 yr average']]
 
 
-wages, wages_10 = smooth_data("CES0500000003", date_start, date_start2, date_end)
+wages, wages_10 = smooth_data("CES0500000003", date_start, date_start2, date_end,mode)
 wages["_3m_smoothing_growth"] = wages["_3m_smoothing_growth"]- cpi["_3m_smoothing_growth"]
 wages["_6m_smoothing_growth"] = wages["_6m_smoothing_growth"]- cpi["_6m_smoothing_growth"]
 wages["_12m_smoothing_growth"] = wages["_12m_smoothing_growth"]- cpi["_12m_smoothing_growth"]
 wages_10 = wages_10[['10 yr average']] - cpi_10[['10 yr average']]
 
-core_cpi, core_cpi_10 = smooth_data("CPILFESL", date_start, date_start2, date_end)
-core_pce, core_pce_10 = smooth_data("PCEPILFE", date_start, date_start2, date_end)
+core_cpi, core_cpi_10 = smooth_data("CPILFESL", date_start, date_start2, date_end,0)
+core_pce, core_pce_10 = smooth_data("PCEPILFE", date_start, date_start2, date_end,0)
 shelter_title = "Shelter Prices"
 wages_title = " Fred Wages"
 
@@ -247,134 +245,134 @@ fig_secular_trends = make_subplots(rows=4, cols=2, specs=[[{"secondary_y": True}
                                                    "Employment","Wages"])
 
 fig_secular_trends.add_trace(
-    go.Scatter(x=cpi.index.to_list(), y=cpi._3m_smoothing_growth/100, name="3m growth average",
+    go.Scatter(x=cpi.index.to_list(), y=cpi._3m_smoothing_growth/100, legendgroup="3m growth average",name="3m ann growth",
                mode="lines", line=dict(width=2,color='orange')), secondary_y=False, row=1, col=1)
 fig_secular_trends.add_trace(
-    go.Scatter(x=cpi.index.to_list(), y=cpi._6m_smoothing_growth/100, name="6m growth average",
+    go.Scatter(x=cpi.index.to_list(), y=cpi._6m_smoothing_growth/100, legendgroup="6m growth average",name="6m ann growth",
                mode="lines", line=dict(width=2,color='#EF553B')), secondary_y=False, row=1, col=1)
 fig_secular_trends.add_trace(
-    go.Scatter(x=cpi.index.to_list(), y=cpi._12m_smoothing_growth/100, name="12m growth average",
+    go.Scatter(x=cpi.index.to_list(), y=cpi._12m_smoothing_growth/100, legendgroup="12m growth average",name="12m ann growth",
                mode="lines", line=dict(width=2,color='red')), secondary_y=False, row=1, col=1)
 fig_secular_trends.add_trace(go.Scatter(x=(cpi_10.index.to_list()),
                                         y=(cpi_10['10 yr average']) / 100, mode="lines",
                                         line=dict(width=2, color='green'),
-                                        name="10 yr average"), secondary_y=False, row=1, col=1)
+                                        legendgroup="10 yr average", name = "10 yr average"), secondary_y=False, row=1, col=1)
 
 fig_secular_trends.add_trace(
-    go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._3m_smoothing_growth/100, name="3m growth average",
+    go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._3m_smoothing_growth/100, legendgroup="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), secondary_y=False, row=1,
     col=2)
 fig_secular_trends.add_trace(
-    go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._6m_smoothing_growth/100, name="6m growth average",
+    go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._6m_smoothing_growth/100, legendgroup="6m growth average",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), secondary_y=False, row=1,
     col=2)
 fig_secular_trends.add_trace(
-    go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._12m_smoothing_growth/100, name="12m growth average",
+    go.Scatter(x=core_cpi.index.to_list(), y=core_cpi._12m_smoothing_growth/100, legendgroup="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=1,
     col=2)
 fig_secular_trends.add_trace(go.Scatter(x=(core_cpi_10.index.to_list()),
                                         y=core_cpi_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="10 yr average", showlegend=False), secondary_y=False, row=1, col=2)
+                                        legendgroup="10 yr average", showlegend=False), secondary_y=False, row=1, col=2)
 
 fig_secular_trends.add_trace(
-    go.Scatter(x=pcec96.index.to_list(), y=pcec96._3m_smoothing_growth/100, name="3m growth average",
+    go.Scatter(x=pcec96.index.to_list(), y=pcec96._3m_smoothing_growth/100, legendgroup="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), secondary_y=False, row=2,
     col=1)
 fig_secular_trends.add_trace(
-    go.Scatter(x=pcec96.index.to_list(), y=pcec96._6m_smoothing_growth/100, name="6m growth average",
+    go.Scatter(x=pcec96.index.to_list(), y=pcec96._6m_smoothing_growth/100, legendgroup="6m growth average",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), secondary_y=False, row=2,
     col=1)
 fig_secular_trends.add_trace(
-    go.Scatter(x=pcec96.index.to_list(), y=pcec96._12m_smoothing_growth/100, name="12m growth average",
+    go.Scatter(x=pcec96.index.to_list(), y=pcec96._12m_smoothing_growth/100, legendgroup="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=2,
     col=1)
 fig_secular_trends.add_trace(go.Scatter(x=(pcec96_10.index.to_list()),
                                         y=pcec96_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="10 yr average", showlegend=False), secondary_y=False, row=2, col=1)
+                                        legendgroup="10 yr average", showlegend=False), secondary_y=False, row=2, col=1)
 
 fig_secular_trends.add_trace(
-    go.Scatter(x=core_pce.index.to_list(), y=core_pce._3m_smoothing_growth/100, name="3m growth average",
+    go.Scatter(x=core_pce.index.to_list(), y=core_pce._3m_smoothing_growth/100, legendgroup="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=2, col=2)
 fig_secular_trends.add_trace(
-    go.Scatter(x=core_pce.index.to_list(), y=core_pce._6m_smoothing_growth/100, name="6m growth average",
+    go.Scatter(x=core_pce.index.to_list(), y=core_pce._6m_smoothing_growth/100, legendgroup="6m growth average",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), row=2, col=2)
 fig_secular_trends.add_trace(
-    go.Scatter(x=core_pce.index.to_list(), y=core_pce._12m_smoothing_growth/100, name="12m growth average",
+    go.Scatter(x=core_pce.index.to_list(), y=core_pce._12m_smoothing_growth/100, legendgroup="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=2, col=2)
 fig_secular_trends.add_trace(go.Scatter(x=(core_pce_10.index.to_list()),
                                         y=core_pce_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="10 yr average", showlegend=False), secondary_y=False, row=2, col=2)
+                                        legendgroup="10 yr average", showlegend=False), secondary_y=False, row=2, col=2)
 fig_secular_trends.add_trace(
         go.Scatter(x=shelter_prices.index.to_list(), y=shelter_prices._3m_smoothing_growth/100,
-               name="3m growth average",
+               legendgroup="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), secondary_y=False, row=3,
     col=1)
 fig_secular_trends.add_trace(
     go.Scatter(x=shelter_prices.index.to_list(), y=shelter_prices._6m_smoothing_growth/100,
-               name="6m growth average",
+               legendgroup="6m growth average",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), secondary_y=False, row=3,
     col=1)
 fig_secular_trends.add_trace(
     go.Scatter(x=shelter_prices.index.to_list(), y=shelter_prices._12m_smoothing_growth/100,
-               name="12m growth average",
+               legendgroup="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=3,
     col=1)
 
 fig_secular_trends.add_trace(go.Scatter(x=(shelter_prices_10.index.to_list()),
                                         y=shelter_prices_10['10 yr average'] / 100,
                                         line=dict(width=2, color='green'), mode="lines",
-                                        name="10 yr average", showlegend=False), secondary_y=False, row=3, col=1)
+                                        legendgroup="10 yr average", showlegend=False), secondary_y=False, row=3, col=1)
 
 fig_secular_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(),
                y=employment_level._3m_smoothing_growth/100,
-               name="Employment level 3m annualized growth",
+               legendgroup="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), secondary_y=False, row=3,
     col=2)
 fig_secular_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(),
                y=employment_level._6m_smoothing_growth/100,
-               name="Employment level 6m annualized growth",
+               legendgroup="6m growth average",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), secondary_y=False, row=3,
     col=2)
 fig_secular_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(),
                y=employment_level._12m_smoothing_growth/100,
-               name="Employment level 12m annualized growth",
+               legendgroup="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=3,
     col=2)
 fig_secular_trends.add_trace(
     go.Scatter(x=employment_level_10.index.to_list(),
                y=employment_level_10["10 yr average"]/100,
-               name="10 yr average",
+               legendgroup="10 yr average",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), secondary_y=False, row=3,
     col=2)
 
 fig_secular_trends.add_trace(
     go.Scatter(x=wages.index.to_list(),
                y=wages._3m_smoothing_growth/100,
-               name="Employment level 3m annualized growth",
+               legendgroup="3m growth average",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), secondary_y=False, row=4,
     col=1)
 fig_secular_trends.add_trace(
     go.Scatter(x=wages.index.to_list(),
                y=wages._6m_smoothing_growth/100,
-               name="Employment level 6m annualized growth",
+               legendgroup="6m growth average",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), secondary_y=False, row=4,
     col=1)
 fig_secular_trends.add_trace(
     go.Scatter(x=wages.index.to_list(),
                y=wages._12m_smoothing_growth/100,
-               name="Employment level 12m annualized growth",
+               legendgroup="12m growth average",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), secondary_y=False, row=4,
     col=1)
 fig_secular_trends.add_trace(
     go.Scatter(x=wages_10.index.to_list(),
                y=wages_10["10 yr average"]/100,
-               name="10 yr average",
+               legendgroup="10 yr average",
                mode="lines", line=dict(width=2, color='green'), showlegend=False), secondary_y=False, row=4,
     col=1)
 fig_secular_trends.update_layout(template="plotly_dark",
