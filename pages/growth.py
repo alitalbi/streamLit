@@ -516,6 +516,7 @@ for col in ['trend vs history ', 'growth', 'Direction of Trend']:
 # display the formatted table
 st.dataframe(score_table_merged.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
 agg_composite_data = composite_displayed.join(atlanta_displayed).join(composite_10_displayed)
+st.plotly_chart(fig_, use_container_width=True)
 st.download_button("Export Composite Growth Data",data=agg_composite_data.to_csv().encode("utf-8"),
                    file_name="Composite_Growth.csv")
 
