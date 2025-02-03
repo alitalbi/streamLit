@@ -481,7 +481,8 @@ fig.update_layout(  # customize font and legend orientation & position
     ))
 
 st.plotly_chart(fig)
-
+st.download_button("Export Market Cycle data",data=agg_market_cycle_df.to_csv().encode('utf-8'),
+                   file_name="Market_Cycle.csv")
 col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
 
 with col1:
