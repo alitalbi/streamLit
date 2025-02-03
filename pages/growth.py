@@ -223,12 +223,12 @@ date_start_converted = date_start.strftime("%Y-%m-%d")
 date_start2_converted = date_start2.strftime("%Y-%m-%d")
 date_end_converted = date_end.strftime("%Y-%m-%d")
 
-pce96,pce96_10 = smooth_data("PCEC96", date_start_converted, date_start2_converted, date_end_converted)
-indpro,indpro_10 = smooth_data("INDPRO", date_start_converted, date_start2_converted, date_end_converted)
-nonfarm,nonfarm_10 = smooth_data("PAYEMS", date_start_converted, date_start2_converted, date_end_converted)
-real_pers,real_pers_10 = smooth_data("W875RX1", date_start_converted, date_start2_converted, date_end_converted)
-retail_sales,retail_sales_10 = smooth_data("RRSFS", date_start_converted, date_start2_converted, date_end_converted)
-employment_level,employment_level_10 = smooth_data("CE16OV", date_start_converted, date_start2_converted, date_end_converted)
+pce96,pce96_10 = smooth_data("PCEC96", date_start_converted, date_start2_converted, date_end_converted,0)
+indpro,indpro_10 = smooth_data("INDPRO", date_start_converted, date_start2_converted, date_end_converted,mode)
+nonfarm,nonfarm_10 = smooth_data("PAYEMS", date_start_converted, date_start2_converted, date_end_converted,mode)
+real_pers,real_pers_10 = smooth_data("W875RX1", date_start_converted, date_start2_converted, date_end_converted,mode)
+retail_sales,retail_sales_10 = smooth_data("RRSFS", date_start_converted, date_start2_converted, date_end_converted,mode)
+employment_level,employment_level_10 = smooth_data("CE16OV", date_start_converted, date_start2_converted, date_end_converted,mode)
 
 
 composite_data = pd.concat(
@@ -314,92 +314,92 @@ fig_.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
 fig_cyclical_trends = make_subplots(rows=3, cols=2, subplot_titles=[pce_title, indpro_title
     , nonfarm_title, real_personal_income_title, retail_sales_title, employment_level_title])
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=pce96.index.to_list(), y=pce96._3m_smoothing_growth / 100, name="3m growth average",
-               mode="lines", line=dict(width=2,color='orange')), row=1, col=1)
+    go.Scatter(x=pce96.index.to_list(), y=pce96._3m_smoothing_growth / 100,
+               mode="lines", line=dict(width=2,color='orange'),legendgroup="3m ann growth",name="3m ann growth"), row=1, col=1)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=pce96.index.to_list(), y=pce96._6m_smoothing_growth / 100, name="6m growth average",
-               mode="lines", line=dict(width=2,color='#EF553B')), row=1, col=1)
+    go.Scatter(x=pce96.index.to_list(), y=pce96._6m_smoothing_growth / 100,
+               mode="lines", legendgroup="6m ann growth", line=dict(width=2,color='#EF553B'),name = "6m ann growth"), row=1, col=1)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=pce96.index.to_list(), y=pce96._12m_smoothing_growth / 100, name="12m growth average",
-               mode="lines", line=dict(width=2,color='red')), row=1, col=1)
+    go.Scatter(x=pce96.index.to_list(), y=pce96._12m_smoothing_growth / 100,
+               mode="lines", legendgroup="12m ann growth", line=dict(width=2,color='red'),name="12m ann growth"), row=1, col=1)
 fig_cyclical_trends.add_trace(go.Scatter(x=(pce96_10.index.to_list()),
                                          y=(pce96_10['10 yr average']) / 100, mode="lines",
                                          line=dict(width=2, color='green'),
-                                         name="10 yr average"), row=1, col=1)
+                                         legendgroup="10 yr average",name="10 yr average"), row=1, col=1)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=indpro.index.to_list(), y=indpro._3m_smoothing_growth / 100, name="3m growth average",
+    go.Scatter(x=indpro.index.to_list(), y=indpro._3m_smoothing_growth / 100, legendgroup="3m ann growth",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=1, col=2)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=indpro.index.to_list(), y=indpro._6m_smoothing_growth / 100, name="6m growth average",
+    go.Scatter(x=indpro.index.to_list(), y=indpro._6m_smoothing_growth / 100, legendgroup="6m ann growth",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), row=1, col=2)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=indpro.index.to_list(), y=indpro._12m_smoothing_growth / 100, name="12m growth average",
+    go.Scatter(x=indpro.index.to_list(), y=indpro._12m_smoothing_growth / 100, legendgroup="12m ann growth",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=1, col=2)
 fig_cyclical_trends.add_trace(go.Scatter(x=(indpro_10.index.to_list()),
                                          y=indpro_10['10 yr average'] / 100, line=dict(width=2, color='green'),
                                          mode="lines",
-                                         name="10 yr average", showlegend=False), row=1, col=2)
+                                         legendgroup="10 yr average", showlegend=False), row=1, col=2)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._3m_smoothing_growth / 100, name="3m growth average",
+    go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._3m_smoothing_growth / 100, legendgroup="3m ann growth",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=2, col=1)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._6m_smoothing_growth / 100, name="6m growth average",
+    go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._6m_smoothing_growth / 100, legendgroup="6m ann growth",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), row=2, col=1)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._12m_smoothing_growth / 100, name="12m growth average",
+    go.Scatter(x=nonfarm.index.to_list(), y=nonfarm._12m_smoothing_growth / 100, legendgroup="12m ann growth",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=2, col=1)
 fig_cyclical_trends.add_trace(go.Scatter(x=(nonfarm_10.index.to_list()),
                                          y=nonfarm_10['10 yr average'] / 100, line=dict(width=2, color='green'),
                                          mode="lines",
-                                         name="10 yr average", showlegend=False), row=2, col=1)
+                                         legendgroup="10 yr average", showlegend=False), row=2, col=1)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=real_pers.index.to_list(), y=real_pers._3m_smoothing_growth / 100, name="3m growth average",
+    go.Scatter(x=real_pers.index.to_list(), y=real_pers._3m_smoothing_growth / 100, legendgroup="3m ann growth",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=2, col=2)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=real_pers.index.to_list(), y=real_pers._6m_smoothing_growth / 100, name="6m growth average",
+    go.Scatter(x=real_pers.index.to_list(), y=real_pers._6m_smoothing_growth / 100, legendgroup="6m ann growth",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), row=2, col=2)
 fig_cyclical_trends.add_trace(
-    go.Scatter(x=real_pers.index.to_list(), y=real_pers._12m_smoothing_growth / 100, name="12m growth average",
+    go.Scatter(x=real_pers.index.to_list(), y=real_pers._12m_smoothing_growth / 100, legendgroup="12m ann growth",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=2, col=2)
 fig_cyclical_trends.add_trace(go.Scatter(x=(real_pers_10.index.to_list()),
                                          y=real_pers_10['10 yr average'] / 100,
                                          line=dict(width=2, color='green'),
                                          mode="lines",
-                                         name="10 yr average", showlegend=False), row=2, col=2)
+                                         legendgroup="10 yr average", showlegend=False), row=2, col=2)
 
 fig_cyclical_trends.add_trace(
     go.Scatter(x=retail_sales.index.to_list(), y=retail_sales._3m_smoothing_growth / 100,
-               name="3m growth average",
+               legendgroup="3m ann growth",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=3, col=1)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=retail_sales.index.to_list(), y=retail_sales._6m_smoothing_growth / 100,
-               name="6m growth average",
+               legendgroup="6m ann growth",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), row=3, col=1)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=retail_sales.index.to_list(), y=retail_sales._12m_smoothing_growth / 100,
-               name="12m growth average",
+               legendgroup="12m ann growth",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=3, col=1)
 fig_cyclical_trends.add_trace(go.Scatter(x=(retail_sales_10.index.to_list()),
                                          y=retail_sales_10['10 yr average'] / 100,
                                          line=dict(width=2, color='green'), mode="lines",
-                                         name="10 yr average", showlegend=False), row=3, col=1)
+                                         legendgroup="10 yr average", showlegend=False), row=3, col=1)
 
 fig_cyclical_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(), y=employment_level._3m_smoothing_growth / 100,
-               name="3m growth average",
+               legendgroup="3m ann growth",
                mode="lines", line=dict(width=2, color='orange'), showlegend=False), row=3, col=2)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(), y=employment_level._6m_smoothing_growth / 100,
-               name="6m growth average",
+               legendgroup="6m ann growth",
                mode="lines", line=dict(width=2, color='#EF553B'), showlegend=False), row=3, col=2)
 fig_cyclical_trends.add_trace(
     go.Scatter(x=employment_level.index.to_list(), y=employment_level._12m_smoothing_growth / 100,
-               name="12m growth average",
+               legendgroup="12m ann growth",
                mode="lines", line=dict(width=2, color='red'), showlegend=False), row=3, col=2)
 fig_cyclical_trends.add_trace(go.Scatter(x=(employment_level_10.index.to_list()),
                                          y=employment_level_10['10 yr average'] / 100,
                                          line=dict(width=2, color='green'), mode="lines",
-                                         name="10 yr average", showlegend=False), row=3, col=2)
+                                         legendgroup="10 yr average", showlegend=False), row=3, col=2)
 
 fig_cyclical_trends.update_layout(template="plotly_dark",
                                   height=1000, width=1500)
