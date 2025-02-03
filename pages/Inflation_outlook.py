@@ -544,4 +544,24 @@ fig_secular_trends.layout.yaxis13.range = [min(min(shelter_prices_10_displayed['
 st.plotly_chart(fig_secular_trends_2, use_container_width=True)
 st.dataframe(score_table_merged_infla.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
 st.plotly_chart(fig_secular_trends, use_container_width=True)
+st.write("Export Data : ")
+col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
+with col1:
+    st.download_button("Infla",data=cpi_10.to_csv().encode("utf-8"),
+                   file_name="Infla.csv")
+with col2:
+    st.download_button("Core Infla",data=core_cpi_10.to_csv().encode("utf-8"),
+                   file_name="Core_infla.csv")
+with col3:
+    st.download_button("PCE",data=pcec96_10.to_csv().encode("utf-8"),
+                   file_name="pce.csv")
+with col4:
+    st.download_button("Core PCE",data=core_pce_10.to_csv().encode("utf-8"),
+                   file_name="Core_pce.csv")
+with col5:
+    st.download_button("Wages",data=wages_10.to_csv().encode("utf-8"),
+                   file_name="Wages.csv")
+with col6:
+    st.download_button("Shelter Prices",data=shelter_prices_10.to_csv().encode("utf-8"),
+                   file_name="Shelter_Prices.csv")
 
