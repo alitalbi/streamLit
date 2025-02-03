@@ -379,7 +379,6 @@ fig_secular_trends.update_layout(template="plotly_dark",
                                  height=1000, width=1500)
 fig_secular_trends.update_layout(  # customize font and legend orientation & position
     yaxis=dict(tickformat=".1%"),
-    title_font_family="Arial Black",
     font=dict(
         family="Rockwell",
         size=15),
