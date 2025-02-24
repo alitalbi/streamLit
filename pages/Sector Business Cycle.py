@@ -249,7 +249,7 @@ sector_roadmap = {"Expansion":{"++":["Financials","Technology"],
 sectors = list(spdr_sector_etfs.values())
 sectors.remove("SCHB")
 broad_market = "SCHB"
-etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2002-01-01", end=datetime.today().strftime("%Y-%m-%d"), interval="1d")["Adj Close"]
+etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2002-01-01", end=datetime.today().strftime("%Y-%m-%d"), interval="1d")["Close"]
 ### avg saily dev ###------------------------------------
 avg_daily = (etf_prices.pct_change(1).rolling(22).mean()*100)
 
