@@ -250,14 +250,16 @@ composite_growth_10.columns = ["10 yr average"]
 url = 'https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPTrackingModelDataAndForecasts.xlsx'
 response = requests.get(url)
 atlanta_gdp_now = pd.read_excel(response.content, sheet_name="TrackingArchives", usecols=['Forecast Date','GDP Nowcast'])
-atlanta_gdp_now.set_index("Forecast Date",inplace=True,drop=True)
+atlanta_gdp_now.index = atlanta_gdp_now["Forecast Date"]
+atlanta_gdp_now.drop("Forecast Date",axis=1,inplace=True)
+
 year = str(date_start.year)
 month = str(date_start.month)
 month = month if len(month)==2 else "0"+month
 
 option = {'User-Agent': 'Mozilla/5.0'}
 fig_ = go.Figure()
-
+fig_atlanta = go.Figure()
 
 # cli=get_cli_data()
 # cli = cli.loc[cli["REF_AREA"]=="USA"][["TIME_PERIOD","OBS_VALUE"]]
@@ -272,13 +274,13 @@ fig_ = go.Figure()
 fig_.add_trace(go.Scatter(x=composite_growth.index.to_list(), y=composite_growth._6m_smoothing_growth / 100,
                           name="6m growth average",
                           mode="lines", line=dict(width=2, color='white')))
-fig_.add_trace(go.Scatter(x=atlanta_gdp_now.index.to_list(), y=atlanta_gdp_now.iloc[:,0]/100,
-                          name="Atlanta Fed GDP Nowcast",
-                          mode="lines", line=dict(width=2, color='blue')))
+
 fig_.add_trace(go.Scatter(x=composite_growth_10.index.to_list(),
                           y=composite_growth_10['10 yr average'] / 100,
                           name="10 yr average",
                           mode="lines", line=dict(width=2, color='green')))
+
+
 
 fig_.update_layout(
     template="plotly_dark",
@@ -293,15 +295,26 @@ fig_.update_layout(xaxis_range = [data_displayed,date_end])
 composite_displayed  = composite_growth.loc[(composite_growth.index > data_displayed) & (composite_growth.index < date_end)]
 composite_10_displayed = composite_growth_10.loc[(composite_growth_10.index > data_displayed) & (composite_growth_10.index < date_end)]
 atlanta_displayed = atlanta_gdp_now.loc[(atlanta_gdp_now.index > data_displayed) & (atlanta_gdp_now.index < date_end)]
+fig_atlanta.add_trace(go.Scatter(x=atlanta_displayed.index.to_list(), y=atlanta_displayed.iloc[:,0],
+                          name="Atlanta Fed GDP Nowcast (%)",
+                          mode="lines", line=dict(width=2, color='blue')))
 
+fig_atlanta.update_layout(
+    template="plotly_dark",
+    title={
+        'text': "Atlanta GDP Nowcast (%)",
+        'y': 0.9,
+        'x': 0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'})
 
-
+agg_composite_date = composite_displayed.join(atlanta_displayed).join(composite_10_displayed)
 
 qs=atlanta_gdp_now.loc[(atlanta_gdp_now.index > np.datetime64(date_start)) & (atlanta_gdp_now.index < np.datetime64(date_end))]
 
 fig_.update_layout(  # customize font and legend orientation & position
-    yaxis=dict(tickformat=".1%",range=[min(min(composite_displayed._6m_smoothing_growth),min(atlanta_displayed.iloc[:,0]),min(composite_10_displayed["10 yr average"]))/100,
-                           max(max(composite_displayed._6m_smoothing_growth),max(atlanta_displayed.iloc[:,0]),max(composite_10_displayed["10 yr average"]))/100]),
+    yaxis=dict(tickformat=".1%",range=[min(min(composite_displayed._6m_smoothing_growth),min(composite_10_displayed["10 yr average"]))/100,
+                           max(max(composite_displayed._6m_smoothing_growth),max(composite_10_displayed["10 yr average"]))/100]),
 
     title_font_family="Arial Black",
     font=dict(
@@ -311,6 +324,7 @@ fig_.update_layout(  # customize font and legend orientation & position
         orientation="h", y=0.97, yanchor="bottom", x=0.5, xanchor="center"
     ),
 )
+
 fig_.update_layout(xaxis=dict(rangeselector=dict(font=dict(color="black"))))
 fig_cyclical_trends = make_subplots(rows=3, cols=2, subplot_titles=[pce_title, indpro_title
     , nonfarm_title, real_personal_income_title, retail_sales_title, employment_level_title])
@@ -513,10 +527,17 @@ for col in ['trend vs history ', 'growth', 'Direction of Trend']:
     score_table_merged[col] = score_table_merged[col].apply(lambda x: format_value(col, x))
 
 # display the formatted table
-st.dataframe(score_table_merged.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
-agg_composite_data = composite_displayed.join(atlanta_displayed).join(composite_10_displayed)
+
+col1,col2 = st.columns(2,gap="small")
+with col1:
+    st.write("")
+    st.write("")
+    st.dataframe(score_table_merged.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
+with col2:
+    st.plotly_chart(fig_atlanta,use_container_width=True)
+    
 st.plotly_chart(fig_, use_container_width=True)
-st.download_button("Export Composite Growth Data",data=agg_composite_data.to_csv().encode("utf-8"),
+st.download_button("Export Composite Growth Data",data=agg_composite_date.to_csv().encode("utf-8"),
                    file_name="Composite_Growth.csv")
 
 st.plotly_chart(fig_cyclical_trends, use_container_width=True)
