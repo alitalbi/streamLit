@@ -114,7 +114,7 @@ elif period_12m:
 elif period_18m:
     date_start = date_end +  BDay(-384*2)
 
-proxy_return = yf.download(list(fin_conditions_tickers.values()), start=date_start, end=date_end, interval="1d")["Adj Close"]
+proxy_return = yf.download(list(fin_conditions_tickers.values()), start=date_start, end=date_end, interval="1d")["Close"]
 ### avg saily dev ###------------------------------------
 indicators = ["DXY","10Y","Gasoline"]
 proxy_return.columns = ["DXY","10Y","Gasoline"]
