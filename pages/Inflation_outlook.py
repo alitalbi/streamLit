@@ -113,10 +113,13 @@ def filter_color(val):
 def smooth_data(internal_ticker, date_start, date_start2, date_end,mode):
     date_start= (datetime.strptime(date_start,"%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
     #print(date_start)
-    data_ = pd.DataFrame(
+    try:
+        data_ = pd.DataFrame(
         fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
-
-
+    except ValueError:
+        time.sleep(1)
+        data_ = pd.DataFrame(
+        fred.get_series(internal_ticker, observation_start=date_start, observation_end=date_end, freq="monthly"))
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
     data_.index = pd.to_datetime(data_.index)
 
@@ -169,8 +172,7 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end,mode):
 def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
     date_start = (datetime.strptime(date_start, "%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
 
-    data_ = yf.download(internal_ticker, start=date_start, end=date_end, interval="1d")[['Close']]
-
+    data_ = yf.download(internal_ticker, interval="1d")[['Close']]
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
     data_.index = pd.to_datetime(data_.index).tz_localize(None)
 
@@ -194,6 +196,7 @@ date_start = date_start.strftime("%Y-%m-%d")
 date_start2 = date_start2.strftime("%Y-%m-%d")
 date_end = date_end.strftime("%Y-%m-%d")
 wheat= commo_smooth_data("ZW=F", date_start,date_start2,date_end)
+
 gas= commo_smooth_data("NG=F", date_start,date_start2,date_end)
 oil= commo_smooth_data("CL=F", date_start,date_start2,date_end)
 cooper_prices= commo_smooth_data("HG=F", date_start,date_start2,date_end)
@@ -202,12 +205,10 @@ cooper_prices= commo_smooth_data("HG=F", date_start,date_start2,date_end)
 employment_level, employment_level_10 = smooth_data("CE16OV", date_start, date_start2, date_end,mode)
 employment_level.dropna(inplace=True)
 
-pcec96, pcec96_10 = smooth_data("PCEC96", date_start, date_start2, date_end,0)
+pcec96, pcec96_10 = smooth_data("PCEPI", date_start, date_start2, date_end,0)
 cpi, cpi_10 = smooth_data("CPIAUCSL", date_start, date_start2, date_end,0)
 # single_search, single_search_10 = smooth_data(ticker_fred, date_start, date_start2, date_end,mode)
 shelter_prices, shelter_prices_10 = smooth_data("CUSR0000SAH1", date_start, date_start2, date_end,mode)
-shelter_prices["_3m_smoothing_growth"],shelter_prices["_6m_smoothing_growth"],shelter_prices["_12m_smoothing_growth"] = shelter_prices[["_3m_smoothing_growth"]] - cpi[["_3m_smoothing_growth"]],shelter_prices[["_6m_smoothing_growth"]] - cpi[["_6m_smoothing_growth"]],shelter_prices[["_12m_smoothing_growth"]] - cpi[["_12m_smoothing_growth"]]
-shelter_prices_10 = shelter_prices_10[['10 yr average']] - cpi_10[['10 yr average']]
 
 
 wages, wages_10 = smooth_data("CES0500000003", date_start, date_start2, date_end,mode)
@@ -227,22 +228,25 @@ score_table_merged_infla = pd.concat([
                                       score_table("PCE", pcec96, pcec96_10),
                                       score_table("Core PCE", core_pce, core_pce_10),
                                       score_table("Shelter Prices", shelter_prices, shelter_prices_10),
-                                      score_table("Wages", wages, wages_10),
+                                      score_table("Wages AHH", wages, wages_10),
                                       score_table("Employment", employment_level, employment_level_10)], axis=0)
 
 score_table_merged_infla = score_table_merged_infla.iloc[:, [4, 0, 1, 2, 3]]
 score_table_merged_infla.reset_index(drop=True,inplace=True)
 
-
+atlanta_fed_wage_tracker = "https://www.atlantafed.org/-/media/documents/datafiles/chcs/wage-growth-tracker/wage-growth-data.xlsx"
+atlanta_fed_wage_tracker = pd.read_excel(wget.download(atlanta_fed_wage_tracker),"data_chart1",skiprows=[0])
+atlanta_fed_wage_tracker.columns = ["Time","Recession","Overall growth","Overall growth : Non Smoothed"]
+atlanta_fed_wage_tracker = atlanta_fed_wage_tracker.loc[atlanta_fed_wage_tracker["Time"]>data_displayed]
 
 
 fig_secular_trends = make_subplots(rows=4, cols=2, specs=[[{"secondary_y": True}, {"secondary_y": True}],
                                                           [{"secondary_y": True}, {"secondary_y": True}],
                                                           [{"secondary_y": True}, {"secondary_y": True}],
                                                           [{"secondary_y": True}, {"secondary_y": True}]],
-                                   subplot_titles=["CPI", "Core CPI"
-                                       , "PCE", "Core PCE", "Shelter Prices",
-                                                   "Employment","Wages"])
+                                   subplot_titles=["CPI (CPIAUCSL)", "Core CPI (CPILFESL)"
+                                       , "PCE (PCEPI)", "Core PCE (PCEPILFE)", "Shelter Prices (CUSR0000SAH1)",
+                                                   "Employment (CE16OV)","Wages AHH (CES0500000003)"])
 
 fig_secular_trends.add_trace(
     go.Scatter(x=cpi.index.to_list(), y=cpi._3m_smoothing_growth/100, legendgroup="3m growth average",name="3m ann growth",
@@ -379,6 +383,7 @@ fig_secular_trends.update_layout(template="plotly_dark",
                                  height=1000, width=1500)
 fig_secular_trends.update_layout(  # customize font and legend orientation & position
     yaxis=dict(tickformat=".1%"),
+    title_font_family="Arial Black",
     font=dict(
         family="Rockwell",
         size=15),
@@ -462,7 +467,6 @@ fig_secular_trends_2.layout.xaxis2.range = [data_displayed, date_end]
 fig_secular_trends_2.layout.xaxis3.range = [data_displayed, date_end]
 fig_secular_trends_2.layout.xaxis4.range = [data_displayed, date_end]
 
-
 wheat_displayed  = wheat.loc[(wheat.index > data_displayed) & (wheat.index < date_end)]
 gas_displayed  = gas.loc[(gas.index > data_displayed) & (gas.index < date_end)]
 oil_displayed  = oil.loc[(oil.index > data_displayed) & (oil.index < date_end)]
@@ -540,11 +544,45 @@ fig_secular_trends.layout.yaxis13.range = [min(min(shelter_prices_10_displayed['
                                                      max(wages_displayed._6m_smoothing_growth),
                                                      max(wages_displayed._12m_smoothing_growth))/100]
 
+fig_wage_tracker = go.Figure()
+fig_wage_tracker.add_trace(
+    go.Scatter(x=atlanta_fed_wage_tracker.Time.to_list(),
+               y=atlanta_fed_wage_tracker["Overall growth"],
+               mode="lines", line=dict(width=2, color='green'),name="Smoothed (3 month-average)",showlegend=True))
+fig_wage_tracker.add_trace(
+    go.Scatter(x=atlanta_fed_wage_tracker.Time.to_list(),
+               y=atlanta_fed_wage_tracker["Overall growth : Non Smoothed"],
+               mode="lines", line=dict(width=2, color='blue'),name="Non Smoothed",showlegend=True))
+fig_wage_tracker.update_layout(
+    template="plotly_dark",
+    title={
+        'text': "Median Wage Growth (%)",
+        'y': 0.9,
+        'x': 0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'})
+
+
 st.plotly_chart(fig_secular_trends_2, use_container_width=True)
-st.dataframe(score_table_merged_infla.style.applymap(filter_color,subset=['Score']),hide_index=True,width=700)
+
+col1,col2 = st.columns(2,gap="small")
+with col1:
+    st.write("")
+    st.write("")
+    st.dataframe(score_table_merged_infla.style.applymap(filter_color, subset=["Score"]),hide_index=True,width=700)
+with col2:
+    st.plotly_chart(fig_wage_tracker)
 st.plotly_chart(fig_secular_trends, use_container_width=True)
+
+cpi_10.columns = ["CPI"] + ["CPI"+ col for col in cpi_10.columns[1:]]
+core_cpi_10.columns = ["Core_Cpi"] + ["Core_Cpi"+ col for col in core_cpi_10.columns[1:]]
+pcec96_10.columns = ["PCE"] + ["PCE"+ col for col in pcec96_10.columns[1:]]
+core_pce_10.columns = ["Core_PCE"] + ["Core_PCE"+ col for col in core_pce_10.columns[1:]]
+wages_10.columns = ["Wages"] + ["Wages"+ col for col in wages_10.columns[1:]]
+shelter_prices_10.columns = ["Shelter_Prices"] + ["Shelter_Prices"+ col for col in shelter_prices_10.columns[1:]]
+
 st.write("Export Data : ")
-col1,col2,col3,col4,col5,col6,col7 = st.columns(7,gap="small")
+col1,col2,col3,col4,col5,col6 = st.columns(6,gap="small")
 with col1:
     st.download_button("Infla",data=cpi_10.to_csv().encode("utf-8"),
                    file_name="Infla.csv")
@@ -563,7 +601,4 @@ with col5:
 with col6:
     st.download_button("Shelter Prices",data=shelter_prices_10.to_csv().encode("utf-8"),
                    file_name="Shelter_Prices.csv")
-with col7:
-    st.download_button("Employment",data=employment_level.to_csv().encode("utf-8"),
-                   file_name="employment.csv")
 
