@@ -224,7 +224,7 @@ date_start_converted = date_start.strftime("%Y-%m-%d")
 date_start2_converted = date_start2.strftime("%Y-%m-%d")
 date_end_converted = date_end.strftime("%Y-%m-%d")
 
-pce96,pce96_10 = smooth_data("PCEC96", date_start_converted, date_start2_converted, date_end_converted,0)
+pce96,pce96_10 = smooth_data("DPCERA3M086SBEA", date_start_converted, date_start2_converted, date_end_converted,mode)
 indpro,indpro_10 = smooth_data("INDPRO", date_start_converted, date_start2_converted, date_end_converted,mode)
 nonfarm,nonfarm_10 = smooth_data("PAYEMS", date_start_converted, date_start2_converted, date_end_converted,mode)
 real_pers,real_pers_10 = smooth_data("W875RX1", date_start_converted, date_start2_converted, date_end_converted,mode)
@@ -561,6 +561,8 @@ with col5:
 with col6:
     st.download_button("Retail Sales",data=retail_sales_10.to_csv().encode("utf-8"),
                    file_name="Retail_Sales.csv")
+
+
 
 
 
