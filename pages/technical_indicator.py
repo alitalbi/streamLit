@@ -163,7 +163,7 @@ elif page == "Strategy Backtest":
         return hurst
 
 
-    st.title("🧪 Strategy Backtest: S&P 500 (^GSPC)")
+    st.title("🧪 Strategy Backtest:")
 
     with st.expander("⚙️ Backtest Settings", expanded=True):
         # --- Date Pickers at the top ---
