@@ -71,7 +71,7 @@ if page == "Momentum Dashboard":
         df['Score'] += np.where(df['CCI'] < -100, -1, 0)
 
         # --- Plot Candlestick
-        st.markdown("### 📈 S&P 500 Candlestick Chart")
+        st.markdown("### 📈 "+ticker+" Candlestick Chart")
         fig = go.Figure()
         fig.add_trace(go.Candlestick(x=df.index,
                                      open=df['Open'].iloc[:,0], high=df['High'].iloc[:,0],
