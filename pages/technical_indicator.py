@@ -34,7 +34,7 @@ page = st.sidebar.radio("Go to", ["Momentum Dashboard", "Strategy Backtest"])
 
 # --- Page 1: Momentum Dashboard ---
 if page == "Momentum Dashboard":
-    st.title("📈 Momentum Dashboard: S&P 500 (^GSPC)")
+    st.title("📈 Momentum Dashboard:")
     col1,col2 = st.columns(2)
     with col1:
         with st.expander("⚙️ Settings", expanded=True):
@@ -45,7 +45,7 @@ if page == "Momentum Dashboard":
                 period = st.selectbox("Period", ["1mo", "3mo", "6mo", "1y", "2y"], index=1)
             with col3:
                 refresh_button = st.button("🔄 Refresh Data")
-
+            ticker = st.text_input("Ticker")
             st.markdown("---")
             st.markdown("#### Indicators Setup")
             rsi_period = st.number_input("RSI Period", min_value=5, max_value=50, value=28)
@@ -53,7 +53,9 @@ if page == "Momentum Dashboard":
             cci_period = st.number_input("CCI Period", min_value=5, max_value=50, value=28)
 
     if refresh_button or True:
-        df = yf.download("^GSPC", period=period, interval=interval)
+        if ticker == "":
+            ticker = "^GSPC"
+        df = yf.download(ticker, period=period, interval=interval)
         df.index = pd.to_datetime(df.index)
         df['RSI'] = calculate_rsi(df['Close'], rsi_period)
         df['WLR%'] = calculate_williams_r(df['High'], df['Low'], df['Close'], wlpr_period)
@@ -192,14 +194,16 @@ elif page == "Strategy Backtest":
             interval = st.selectbox("Interval", ["1d", "1h", "30m", "15m"], index=0, key="backtest_interval")
         with col2:
             period = st.selectbox("Period", ["3mo", "6mo", "1y", "2y"], index=1, key="backtest_period")
-
+            ticker = st.text_input("Ticker")
         st.markdown("---")
         st.markdown("#### Strategy Parameters")
         sma_period = st.number_input("SMA Period", min_value=5, max_value=100, value=28, key="sma_period")
         initial_cash = st.number_input("Initial Cash ($)", min_value=1000, value=100000, step=1000)
 
     st.info(f"Downloading data for {period} with {interval} interval...")
-    df = yf.download("^GSPC", period=period, interval=interval)
+    if ticker == "":
+        ticker = "^GSPC"
+    df = yf.download(ticker, period=period, interval=interval)
     # If the columns have MultiIndex, flatten them
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
