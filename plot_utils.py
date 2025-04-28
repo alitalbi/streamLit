@@ -50,7 +50,7 @@ def plot_assets_final_layout(asset_data, highlight_critical=False):
                 y=df['Close'].iloc[:,0],
                 mode='lines',
                 name=f"{asset_name} Price",
-                marker=dict(color='black')
+                marker=dict(color='white')
             ),
             row=i+1, col=1
         )
