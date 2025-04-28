@@ -11,7 +11,7 @@ def plot_assets_final_layout(asset_data, highlight_critical=False):
         shared_xaxes=True,
         vertical_spacing=0.05,
         horizontal_spacing=0.8,
-        subplot_titles= [asset + " "+elem for asset in asset_data for elem in ["Price","Fractal"]]
+        subplot_titles= [asset + " "+elem for asset in asset_data for elem in ["Fractal","Price"]]
     )
 
     i = 1
