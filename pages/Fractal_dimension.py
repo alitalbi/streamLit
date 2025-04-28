@@ -32,7 +32,7 @@ end = datetime.date.today().strftime('%Y-%m-%d')
 
 asset_classes = {
     "Equity": {
-        "S&P 500": "^GSPC",
+        "S&P 500": "SPY",
         "EUROSTOXX 600": "^STOXX",
         "MSCI World": "URTH"  # ETF proxy
     },
