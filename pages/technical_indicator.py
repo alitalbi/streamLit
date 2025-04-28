@@ -48,9 +48,9 @@ if page == "Momentum Dashboard":
             ticker = st.text_input("Ticker")
             st.markdown("---")
             st.markdown("#### Indicators Setup")
-            rsi_period = st.number_input("RSI Period", min_value=5, max_value=50, value=28)
-            wlpr_period = st.number_input("Williams %R Period", min_value=5, max_value=50, value=28)
-            cci_period = st.number_input("CCI Period", min_value=5, max_value=50, value=28)
+            rsi_period = st.number_input("RSI Period", min_value=5, max_value=100, value=28)
+            wlpr_period = st.number_input("Williams %R Period", min_value=5, max_value=100, value=70)
+            cci_period = st.number_input("CCI Period", min_value=5, max_value=100, value=70)
 
     if refresh_button or True:
         if ticker == "":
@@ -216,8 +216,8 @@ elif page == "Strategy Backtest":
     # --- Calculate Indicators
     df['SMA'] = df['Close'].rolling(window=sma_period).mean()
     df['RSI'] = calculate_rsi(df['Close'], 28)
-    df['WLR%'] = calculate_williams_r(df['High'], df['Low'], df['Close'], 28)
-    df['CCI'] = calculate_cci(df['High'], df['Low'], df['Close'], 28)
+    df['WLR%'] = calculate_williams_r(df['High'], df['Low'], df['Close'], 70)
+    df['CCI'] = calculate_cci(df['High'], df['Low'], df['Close'], 70)
 
     # --- Create Scorecard
     df['Score'] = 0
