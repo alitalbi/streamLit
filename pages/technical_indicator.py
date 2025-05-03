@@ -57,6 +57,7 @@ if page == "Momentum Dashboard":
             ticker = "^GSPC"
         df = yf.download(ticker, period=period, interval=interval)
         df.index = pd.to_datetime(df.index)
+        st.write(df)
         df['RSI'] = calculate_rsi(df['Close'], rsi_period)
         df['WLR%'] = calculate_williams_r(df['High'], df['Low'], df['Close'], wlpr_period)
         df['CCI'] = calculate_cci(df['High'], df['Low'], df['Close'], cci_period)
