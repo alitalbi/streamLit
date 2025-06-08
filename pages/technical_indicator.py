@@ -257,7 +257,7 @@ elif page == "Strategy Backtest":
     short_condition = (df['Close'] < df['SMA']) & (df['Score'] <= -2)
 
     # --- Apply logic
-    df.loc[flat_zone, 'Signal'] = 0  # No trade if in flat zone
+    # df.loc[flat_zone, 'Signal'] = 0  # No trade if in flat zone
     df.loc[long_condition, 'Signal'] = 1
     df.loc[short_condition, 'Signal'] = -1
 
