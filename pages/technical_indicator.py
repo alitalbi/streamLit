@@ -48,9 +48,9 @@ if page == "Momentum Dashboard":
             ticker = st.text_input("Ticker")
             st.markdown("---")
             st.markdown("#### Indicators Setup")
-            rsi_period = st.number_input("RSI Period", min_value=5, max_value=100, value=28)
-            wlpr_period = st.number_input("Williams %R Period", min_value=5, max_value=100, value=70)
-            cci_period = st.number_input("CCI Period", min_value=5, max_value=100, value=70)
+            rsi_period = st.number_input("RSI Period", min_value=5, value=28)
+            wlpr_period = st.number_input("Williams %R Period", min_value=5,  value=70)
+            cci_period = st.number_input("CCI Period", min_value=5, value=70)
 
     if refresh_button or True:
         if ticker == "":
@@ -198,7 +198,7 @@ elif page == "Strategy Backtest":
             ticker = st.text_input("Ticker")
         st.markdown("---")
         st.markdown("#### Strategy Parameters")
-        sma_period = st.number_input("SMA Period", min_value=5, max_value=100, value=28, key="sma_period")
+        sma_period = st.number_input("SMA Period", min_value=5,  value=28, key="sma_period")
         initial_cash = st.number_input("Initial Cash ($)", min_value=1000, value=100000, step=1000)
 
     st.info(f"Downloading data for {period} with {interval} interval...")
