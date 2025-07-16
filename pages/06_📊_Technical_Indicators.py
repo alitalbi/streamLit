@@ -11,7 +11,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import yfinance as yf
-import pandas_ta as ta
+# import pandas_ta as ta
 from scipy import stats
 
 # Page configuration
