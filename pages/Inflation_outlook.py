@@ -8,8 +8,8 @@ import yfinance as yf
 from datetime import datetime,timedelta
 import os
 from pandas.tseries.offsets import BDay
-
-
+import time
+import urllib
 
 st.set_page_config(page_title="Inflation",layout="wide",initial_sidebar_state="collapsed")
 st.markdown("""
@@ -87,14 +87,22 @@ date_end =pd.Timestamp(datetime.now().strftime("%Y-%m-%d"))
 if custom_date:
     date_start_custom = st.date_input("Start date:", pd.Timestamp("2021-01-01"))  
     data_displayed = pd.Timestamp(date_start_custom)
-    
+
 def get_data(ticker):
-    ticker = ticker.replace("=", "%3D")
-    endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker}.csv"
-    price_df = pd.read_csv(endpoint_data,usecols=["Date","Close"])
-    price_df.columns = ["Date",ticker]
-    price_df["Date"] = pd.to_datetime(price_df["Date"])
-    return price_df
+    ticker_request = ticker.replace("=", "%3D")
+
+    try:
+        endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker_request}.csv"
+        price_df = pd.read_csv(endpoint_data,usecols=["Date","Close"])
+        price_df["Date"] = pd.to_datetime(price_df["Date"])
+        return price_df
+    except urllib.error.HTTPError as e:
+            print(f"HTTP Error: {e.code} {e.reason}")
+            print(f"URL: {endpoint_data}")
+            raise
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise
 def score_table(index, data_, data_10):
     bool_values = {True:1,False:0}
     score_table = pd.DataFrame.from_dict({"trend vs history ": bool_values[data_["_6m_smoothing_growth"][-1] > data_10["10 yr average"][-1]],
@@ -177,6 +185,7 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end,mode):
 
 def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
     date_start = (datetime.strptime(date_start, "%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
+    internal_ticker = internal_ticker.replace("=","%3D")
 
     data_ = get_data(internal_ticker)[['Date','Close']]
 
@@ -188,7 +197,9 @@ def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
     # Calculate the smoothed average
     data_["average"] = data_.rolling(66).mean()
 
-    data_["14d_growth_rate"] = ((data_["Close"].iloc[:,0] / data_["average"]) ** (252 / 66) - 1) * 100
+    data_.dropna(inplace=True)
+    data_ = data_.astype(float)
+    data_["14d_growth_rate"] = ((data_["Close"] / data_["average"]) ** (252 / 66) - 1) * 100
   
     data_["28d_ma"] = data_["Close"].rolling(28).mean()
     data_["100d_ma"] = data_["Close"].rolling(100).mean()
