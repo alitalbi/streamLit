@@ -9,6 +9,7 @@ import yfinance as yf
 from functools import reduce
 import plotly.express as px
 import time
+from functools import reduce
 
 st.set_page_config(page_title="Business Cycle",layout="wide",initial_sidebar_state="collapsed")
 
@@ -77,6 +78,14 @@ st.markdown("""
         <a href="/Primary_Dealer" target="_self">Primary Dealer</a>
     </div>
 """, unsafe_allow_html=True)
+
+def get_data(ticker):
+    ticker = ticker.replace("=", "%3D")
+    endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker}.csv"
+    price_df = pd.read_csv(endpoint_data,usecols=["Date","Close"])
+    price_df.columns = ["Date",ticker]
+    price_df["Date"] = pd.to_datetime(price_df["Date"])
+    return price_df
 
 def hit_ratio(etf_returns,period):
     if period=="MtD":
@@ -288,7 +297,10 @@ sector_roadmap = {"Expansion":{"++":["Financials","Technology"],
 sectors = list(spdr_sector_etfs.values())
 sectors.remove("SCHB")
 broad_market = "SCHB"
-etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2002-01-01", end=datetime.today().strftime("%Y-%m-%d"), interval="1d")["Close"]
+etf_prices =reduce(lambda x,y:pd.merge(x,y,on="Date",how="inner"),[get_data(ticker) for ticker in list(spdr_sector_etfs.values())])
+#etf_prices = yf.download(list(spdr_sector_etfs.values()), start="2002-01-01", end=datetime.today().strftime("%Y-%m-%d"), interval="1d")["Close"]
+etf_prices.set_index("Date",inplace=True)
+etf_prices = etf_prices.astype(float)
 ### avg saily dev ###------------------------------------
 avg_daily = (etf_prices.pct_change(1).rolling(22).mean()*100)
 
@@ -297,9 +309,8 @@ avg_daily = avg_daily.T
 avg_daily_copy = avg_daily.copy()
 excess_avg_daily_return = round(avg_daily.loc[sectors,:] - avg_daily.loc[broad_market,:],2)
 avg_daily.reset_index(inplace=True)
-
 excess_avg_daily_return.reset_index(inplace=True)
-avg_daily["sector"] = avg_daily["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
+avg_daily["sector"] = avg_daily["index"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
 ### avg saily dev ###------------------------------------
 
 
@@ -316,11 +327,11 @@ avg_returns = avg_returns[["MtD","2m","3m","6m","9m","12m","18m"]]
 
 excess_return = round(avg_returns.loc[sectors,:] - avg_returns.loc[broad_market,:],2)
 excess_return.reset_index(inplace=True)
-excess_return["sector"] = excess_return["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
-excess_return = excess_return[["Ticker","sector","MtD","3m","6m","12m","18m"]]
+excess_return["sector"] = excess_return["index"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
+excess_return = excess_return[["index","sector","MtD","3m","6m","12m","18m"]]
 avg_returns.reset_index(inplace=True)
-avg_returns["sector"] = avg_returns["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
-avg_returns = avg_returns[["Ticker","sector","MtD","3m","6m","12m","18m"]]
+avg_returns["sector"] = avg_returns["index"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
+avg_returns = avg_returns[["index","sector","MtD","3m","6m","12m","18m"]]
 
 # st.markdown("### Average return per Sectors")
 # styled_avg_returns = avg_returns.style.apply(highlight_values,axis=None)
@@ -342,15 +353,15 @@ for period in ["MtD",3,6,12,18]:
   hit_ratios_list.append(sub_df)
 hit_ratios = pd.concat(hit_ratios_list,axis=1)
 hit_ratios.reset_index(inplace=True)
-hit_ratios["sector"] = hit_ratios["Ticker"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
+hit_ratios["sector"] = hit_ratios["index"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})
 styled_hit_ratios = hit_ratios.style.apply(highlight_values,axis=None)
-sector_avg_returns = avg_returns.loc[avg_returns["Ticker"].isin(sectors)]
+sector_avg_returns = avg_returns.loc[avg_returns["index"].isin(sectors)]
 
 ### avg saily dev ###------------------------------------
 avg_daily_copy.reset_index(inplace=True)
 for df in ["daily_avg_hit_ratio","excess_avg_daily_return","avg_daily_copy"]:
-    exec(df+"[\"sector\"] = "+df+"[\"Ticker\"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})")
-    exec(df+".drop(\"Ticker\",axis=1,inplace=True)")
+    exec(df+"[\"sector\"] = "+df+"[\"index\"].map({spdr_sector_etfs[v]:v for k,v in enumerate(spdr_sector_etfs)})")
+    exec(df+".drop(\"index\",axis=1,inplace=True)")
     exec(df+".set_index(\"sector\",inplace=True)")
     exec(df+"="+df+".T")
 
@@ -363,7 +374,7 @@ common_index = daily_avg_hit_ratio.index.intersection(excess_avg_daily_return.in
 daily_avg_hit_ratio = daily_avg_hit_ratio.loc[common_index]
 excess_avg_daily_return = excess_avg_daily_return.loc[common_index]
 avg_daily_copy = avg_daily_copy.loc[common_index]
-filtered_col = ["Ticker","sector","3m","6m","12m","18m"]
+filtered_col = ["index","sector","3m","6m","12m","18m"]
 #hit_avg_daily = concat_data(daily_avg_hit_ratio,"","Hit Rate (% months outperf Market)")
 hit_mtd=concat_data(hit_ratios,"MtD","Hit Rate (% months outperf Market)")
 avg_return_mtd=concat_data(sector_avg_returns,"MtD","Avg Monthly Return")
