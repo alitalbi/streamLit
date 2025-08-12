@@ -88,7 +88,13 @@ if custom_date:
     date_start_custom = st.date_input("Start date:", pd.Timestamp("2021-01-01"))  
     data_displayed = pd.Timestamp(date_start_custom)
     
-
+def get_data(ticker):
+    ticker = ticker.replace("=", "%3D")
+    endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker}.csv"
+    price_df = pd.read_csv(endpoint_data,usecols=["Date","Close"])
+    price_df.columns = ["Date",ticker]
+    price_df["Date"] = pd.to_datetime(price_df["Date"])
+    return price_df
 def score_table(index, data_, data_10):
     bool_values = {True:1,False:0}
     score_table = pd.DataFrame.from_dict({"trend vs history ": bool_values[data_["_6m_smoothing_growth"][-1] > data_10["10 yr average"][-1]],
@@ -172,7 +178,9 @@ def smooth_data(internal_ticker, date_start, date_start2, date_end,mode):
 def commo_smooth_data(internal_ticker, date_start, date_start2, date_end):
     date_start = (datetime.strptime(date_start, "%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
 
-    data_ = yf.download(internal_ticker, interval="1d")[['Close']]
+    data_ = get_data(internal_ticker)[['Date','Close']]
+
+    data_.set_index("Date",inplace=True)
     data_ = data_.loc[(data_.index > date_start) & (data_.index < date_end)]
     data_.index = pd.to_datetime(data_.index).tz_localize(None)
 
