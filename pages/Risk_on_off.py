@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+import urllib
 from datetime import datetime,timedelta
 import requests
 import yfinance as yf
@@ -85,33 +86,34 @@ frequency = "1d"
 date_start = "2010-01-01"
 date_end = datetime.now().strftime("%Y-%m-%d")
 
+def get_data(ticker,start,end):
+    ticker_request = ticker.replace("=", "%3D")
+
+    try:
+        endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker_request}.csv"
+        price_df = pd.read_csv(endpoint_data,usecols=["Date","Close"])
+        price_df.set_index("Date", inplace=True)
+        price_df.index = pd.to_datetime(price_df.index).tz_localize(None)
+        price_df = price_df.loc[(price_df.index > start) & (price_df.index < end)]
+
+        return price_df
+    except urllib.error.HTTPError as e:
+            print(f"HTTP Error: {e.code} {e.reason}")
+            print(f"URL: {endpoint_data}")
+            raise
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise
 def momentum(period,etf1,etf2):
     period_dict = {"1w":5,"1m":22,"3m":66,"6m":132,"12m":264,"18m":396}
-    try:
-        data_etf1 = pd.DataFrame(
-            yf.download(etf1, date_start, date_end, period=frequency))
-        data_etf2 = pd.DataFrame(
-            yf.download(etf2, date_start, date_end, period=frequency))
-        ratio_etfs = data_etf1['Close'][etf1]/data_etf2['Close'][etf2]
-    
-        ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(period_dict[period])
-        ratio_etfs.dropna(inplace=True)
-        final_df = ratio_etfs[[etf1+"/"+etf2]][0].to_frame()
-        final_df.columns = [etf1+"/"+etf2]
-    except KeyError:
-        time.sleep(1)
-        data_etf1 = pd.DataFrame(
-            yf.download(etf1, date_start, date_end, period=frequency))
-        data_etf2 = pd.DataFrame(
-            yf.download(etf2, date_start, date_end, period=frequency))
+    data_etf1 = get_data(etf1,date_start,date_end)
+    data_etf2 = get_data(etf2,date_start,date_end)
+    ratio_etfs = data_etf1['Close']/data_etf2['Close']
+    ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(period_dict[period])
+    ratio_etfs.dropna(inplace=True)
 
-        ratio_etfs = data_etf1['Close'][etf1]/data_etf2['Close'][etf2]
-    
-        ratio_etfs[etf1+"/"+etf2] = ratio_etfs.diff(period_dict[period])
-
-        ratio_etfs.dropna(inplace=True)
-        final_df = ratio_etfs[[etf1+"/"+etf2]][0].to_frame()
-        final_df.columns = [etf1+"/"+etf2]
+    final_df = ratio_etfs[[etf1+"/"+etf2]][0].to_frame()
+    final_df.columns = [etf1+"/"+etf2]
     return final_df
 
 #1w
@@ -258,12 +260,14 @@ if len(selection_ratios) != 0:
     etf2 = etf_pairs[selection_ratios][1]
 
     data_etf1 = pd.DataFrame(
-                yf.download(etf1, start, date_end, period=frequency))["Close"]
+                get_data(etf1, start, date_end))[["Close"]]
     data_etf2 = pd.DataFrame(
-                yf.download(etf2, start, date_end, period=frequency))["Close"]
+                get_data(etf2, start, date_end))[["Close"]]
+    data_etf1.columns = [etf1]
+    data_etf2.columns = [etf2]
+
     merged_ratio = data_etf1.join(data_etf2)
     merged_ratio.dropna(inplace=True)
-
     #should have insteade of pc_change(1) the ratio for the last 1w + average pct change on a sliding window of 1w,1m,3m,etc..
     
     fig_ratio = make_subplots(specs=[[{"secondary_y": True}]])
