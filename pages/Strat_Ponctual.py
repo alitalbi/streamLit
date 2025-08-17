@@ -52,7 +52,7 @@ def build_indicators(data):
     data["carry_normalized"] = data["5_2y"] / data["5_2y"].rolling(75).std()
     data["5d_ma_5y"] = data["5y"].rolling(5).mean()
     data["20d_ma_5y"] = data["5y"].rolling(20).mean()
-    data["momentum"] = data["20d_ma_5y"] - data["5d_ma_5y"]
+    data["momentum"] = data["5d_ma_5y"] - data["20d_ma_5y"]
     return data
 
 def percentile_score(window):
