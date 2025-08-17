@@ -47,7 +47,7 @@ def plot_assets_final_layout(asset_data, highlight_critical=False):
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df['Close'].iloc[:,0],
+                y=df['Close'],
                 mode='lines',
                 name=f"{asset_name} Price",
                 marker=dict(color='white')

@@ -6,7 +6,6 @@ import numpy as np
 import urllib
 from datetime import datetime,timedelta
 import requests
-import yfinance as yf
 from functools import reduce
 import plotly.express as px
 import time

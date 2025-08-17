@@ -6,7 +6,7 @@ import yfinance as yf
 from fredapi import Fred
 import streamlit as st
 import plotly.graph_objects as go
-
+import urllib
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
 st.set_page_config(layout="wide")
 
@@ -14,14 +14,32 @@ st.set_page_config(layout="wide")
 logging.basicConfig(level=logging.INFO)
 
 assets_dict = {
-    "2y US": "2YY=F",
+    "2y US": "DGS2",
     "5y US": "^FVX",
     "5y US Real": "DFII5",
     "5y US Future": "ZF=F"}
 
+
+def get_data(ticker,start):
+    ticker_request = ticker.replace("=", "%3D")
+
+    try:
+        endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker_request}.csv"
+        price_df = pd.read_csv(endpoint_data,usecols=["Date","Close"])
+        price_df.set_index("Date", inplace=True)
+        price_df.index = pd.to_datetime(price_df.index).tz_localize(None)
+        price_df = price_df.loc[price_df.index > start]
+        return price_df
+    except urllib.error.HTTPError as e:
+            print(f"HTTP Error: {e.code} {e.reason}")
+            print(f"URL: {endpoint_data}")
+            raise
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise
 def import_data(ticker, start_date):
     logging.info(f"ticker used : {ticker}")
-    data = yf.download(ticker, start=start_date)["Close"][[ticker]]
+    data = get_data(ticker, start=start_date)
     return data
 
 def fred_import(ticker, start_date):
@@ -51,12 +69,26 @@ def zscore(data, lookback):
 if __name__ == "__main__":
     # Customizable start date with 6 months prior data
     default_date = datetime(2023, 10, 1)
-    start_date_input = st.date_input("Select Start Date", value=default_date)
+    cols = st.columns([2,3,3])
+    with cols[0]:
+        start_date_input = st.date_input("Select Start Date", value=default_date)
+        subcols = st.columns([2,2,2])
+        with subcols[0]:
+            carry_weight = st.text_input("W Carry %",value=20)
+            carry_weight = float(carry_weight)
+        with subcols[1]:
+            value_weight = st.text_input("W Value %",value=70)
+            value_weight = float(value_weight)
+        with subcols[2]:
+            momentum_weight = st.text_input("W Momentum %",value=10)
+            momentum_weight = float(momentum_weight)
+        if momentum_weight + value_weight + carry_weight > 100:
+            st.error("Careful Weights > 100%")
     start_date = start_date_input - timedelta(days=6*30)  # 6 months prior
     start_date_str = start_date.strftime("%Y-%m-%d")
 
     # Import data
-    _2yUS = import_data(assets_dict["2y US"], start_date_str)
+    _2yUS = fred_import(assets_dict["2y US"], start_date_str)
     _2yUS.columns = ["2y"]
     _5yUS = import_data(assets_dict["5y US"], start_date_str)
     _5yUS.columns = ["5y"]
@@ -66,14 +98,13 @@ if __name__ == "__main__":
 
     backtest_data = _2yUS.join(_5yUS_real).join(_5yUS)
     backtest_data.dropna(inplace=True)
-
     indicators = build_indicators(backtest_data)
 
     # Calculate Z-scores and percentiles
     for cols in ["5y_Real", "carry_normalized", "momentum"]:
         indicators[f"{cols}_z"] = zscore(indicators[cols], 63)
         indicators[f"{cols}_percentile"] = indicators[cols].rolling(63).apply(lambda x: percentile_score(x))
-    indicators["Agg_Percentile"] = indicators[["5y_Real_percentile", "carry_normalized_percentile", "momentum_percentile"]].mean(axis=1)
+    indicators["Agg_Percentile"] = (indicators["5y_Real_percentile"]*value_weight + indicators["carry_normalized_percentile"]* carry_weight + indicators["momentum_percentile"] * momentum_weight)/100
 
     # Trading signals
     indicators["signal"] = 0
@@ -153,7 +184,7 @@ if __name__ == "__main__":
         latest_data = indicators.iloc[-1]
         percentile_table = pd.DataFrame({
             "5Y Treasuries": ["Value", "Carry", "Momentum", "Aggregate"],
-            "Percentile": [
+            "Percentile %": [
                 latest_data["5y_Real_percentile"],
                 latest_data["carry_normalized_percentile"],
                 latest_data["momentum_percentile"],
@@ -161,7 +192,7 @@ if __name__ == "__main__":
             ]
         })
         st.subheader("Indicators Table")
-        st.dataframe(percentile_table.round(2), hide_index=True,width=200)
+        st.dataframe(percentile_table.round(0), hide_index=True,width=200)
     col1, col2 = st.columns(2)
     # First Plot: Futures Price with Buy/Sell Signals (in col1)
     with col1:
@@ -203,7 +234,7 @@ if __name__ == "__main__":
             title="Strategy Cumulative Return",
             yaxis=dict(title="Cumulative Return (%)", range=[min(indicator_full["cum_return"] * 100) * 1.1, max(indicator_full["cum_return"] * 100) * 1.1])
         )
-        st.plotly_chart(fig3, use_container_width=True)
+        #st.plotly_chart(fig3, use_container_width=True)
 
     # Display total return
     st.write(f"Total Strategy Return: {total_return:.2f}%")

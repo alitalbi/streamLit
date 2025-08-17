@@ -1,9 +1,9 @@
 import streamlit as st
 from Fractal import compute_fractal_dimension
-from data_fetcher import fetch_yahoo_data
+from data_fetcher import get_data
 from plot_utils import plot_assets_final_layout
 import datetime
-
+import urllib
 scaling_factor = 65
 
 # --- Date Pickers at the top ---
@@ -55,7 +55,6 @@ asset_classes = {
         "Copper": "HG=F"
     }
 }
-
 st.title("📈 Fractal Dimension Dashboard")
 
 # Create tab titles
@@ -74,7 +73,7 @@ for tab, asset_group in zip(tabs, tab_names):
                 st.warning(f"{name} - Data source not configured.")
                 continue
             try:
-                price_df = fetch_yahoo_data(ticker, start, end)
+                price_df = get_data(ticker, start, end)
                 fractal = compute_fractal_dimension(price_df['Close'], scaling_factor)
                 price_df['Fractal'] = fractal
                 df_clean = price_df[['Close', 'Fractal']].dropna()
