@@ -3,9 +3,58 @@ import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
+import urllib
 import plotly.graph_objects as go
+import xml.etree.ElementTree as ET
+
+
+def load_assets_from_xml(xml_file: str):
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    assets = {}
+
+    for asset_class in root.findall("AssetClass"):
+        class_name = asset_class.attrib["name"]
+        assets[class_name] = {}
+
+        for product in asset_class:
+            tag = product.tag  # Fx, Etf, Future, Index, etc.
+            if tag not in assets[class_name]:
+                assets[class_name][tag] = {}
+
+            name = product.find("Name").text.strip()
+            ticker = product.find("Ticker").text.strip()
+            assets[class_name][tag][name] = ticker
+
+    return assets
+
+def get_ticker(assets_dict, asset_class, product_type, name):
+    try:
+        return assets_dict[asset_class][product_type][name]
+    except KeyError:
+        return None
 st.set_page_config(layout="wide")
+
+
+# Load XML once at app start
+assets_dict = load_assets_from_xml("assets.xml")
+
+
+def get_data(ticker,start):
+    ticker_request = ticker.replace("=", "%3D")
+
+    try:
+        endpoint_data = f"https://raw.githubusercontent.com/alitalbi/storage_data_fy/refs/heads/master/{ticker_request}.csv"
+        price_df = pd.read_csv(endpoint_data)
+        price_df.set_index("Date", inplace=True)
+        price_df.index = pd.to_datetime(price_df.index).tz_localize(None)
+        price_df = price_df.loc[price_df.index > start]
+        return price_df
+    except urllib.error.HTTPError as e:
+            print(f"HTTP Error: {e.code} {e.reason}")
+            print(f"URL: {endpoint_data}")
+            raise
 # --- Helper Functions ---
 def calculate_rsi(series, period):
     delta = series.diff()
@@ -38,14 +87,33 @@ if page == "Momentum Dashboard":
     col1,col2 = st.columns(2)
     with col1:
         with st.expander("⚙️ Settings", expanded=True):
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 interval = st.selectbox("Interval", ["1d", "1h", "30m", "15m"], index=0)
             with col2:
                 period = st.selectbox("Period", ["1mo", "3mo", "6mo", "1y", "2y"], index=1)
             with col3:
+                start=st.date_input(label="Start Date",
+                                  value=datetime.date(2025, 1, 1),
+                                  min_value=datetime.date(1990, 1, 1),
+                                  max_value=datetime.date.today())
+
+            with col4:
                 refresh_button = st.button("🔄 Refresh Data")
-            ticker = st.text_input("Ticker")
+            cols = st.columns([3, 3, 3])
+            with cols[0]:
+                # Step 1: Choose Asset Class
+                asset_class = st.selectbox("Asset Class", list(assets_dict.keys()))
+            with cols[1]:
+                # Step 2: Choose Product Type
+                product_type = st.selectbox("Product Type", list(assets_dict[asset_class].keys()))
+
+            with cols[2]:
+                # Step 3: Choose Product Name
+                name = st.selectbox("Product", list(assets_dict[asset_class][product_type].keys()))
+
+            # Output Ticker
+            ticker = get_ticker(assets_dict, asset_class, product_type, name)
             st.markdown("---")
             st.markdown("#### Indicators Setup")
             rsi_period = st.number_input("RSI Period", min_value=5, value=28)
@@ -55,9 +123,8 @@ if page == "Momentum Dashboard":
     if refresh_button or True:
         if ticker == "":
             ticker = "^GSPC"
-        df = yf.download(ticker, period=period, interval=interval)
+        df = get_data(ticker, start=start.strftime("%Y-%m-%d"))
         df.index = pd.to_datetime(df.index)
-        st.write(df)
         df['RSI'] = calculate_rsi(df['Close'], rsi_period)
         df['WLR%'] = calculate_williams_r(df['High'], df['Low'], df['Close'], wlpr_period)
         df['CCI'] = calculate_cci(df['High'], df['Low'], df['Close'], cci_period)
@@ -75,8 +142,8 @@ if page == "Momentum Dashboard":
         st.markdown("### 📈 "+ticker+" Candlestick Chart")
         fig = go.Figure()
         fig.add_trace(go.Candlestick(x=df.index,
-                                     open=df['Open'].iloc[:,0], high=df['High'].iloc[:,0],
-                                     low=df['Low'].iloc[:,0], close=df['Close'].iloc[:,0],
+                                     open=df['Open'], high=df['High'],
+                                     low=df['Low'], close=df['Close'],
                                      name="Candles"))
         fig.update_layout(xaxis_rangeslider_visible=False, height=600)
         st.plotly_chart(fig, use_container_width=True)
@@ -175,7 +242,7 @@ elif page == "Strategy Backtest":
         with col1:
             start = st.date_input(
                 label="Start Date",
-                value=datetime.date(2010, 1, 1),
+                value=datetime.date(2023, 1, 1),
                 min_value=datetime.date(1990, 1, 1),
                 max_value=datetime.date.today()
             )
@@ -191,20 +258,25 @@ elif page == "Strategy Backtest":
         start = start.strftime("%Y-%m-%d")
         end = datetime.date.today().strftime('%Y-%m-%d')
         col1, col2 = st.columns(2)
-        with col1:
-            interval = st.selectbox("Interval", ["1d", "1h", "30m", "15m"], index=0, key="backtest_interval")
-        with col2:
-            period = st.selectbox("Period", ["3mo", "6mo", "1y", "2y"], index=1, key="backtest_period")
-            ticker = st.text_input("Ticker")
+        cols = st.columns([3, 3, 3])
+        with cols[0]:
+            # Step 1: Choose Asset Class
+            asset_class = st.selectbox("Asset Class", list(assets_dict.keys()))
+        with cols[1]:
+            # Step 2: Choose Product Type
+            product_type = st.selectbox("Product Type", list(assets_dict[asset_class].keys()))
+
+        with cols[2]:
+            # Step 3: Choose Product Name
+            name = st.selectbox("Product", list(assets_dict[asset_class][product_type].keys()))
         st.markdown("---")
         st.markdown("#### Strategy Parameters")
         sma_period = st.number_input("SMA Period", min_value=5,  value=28, key="sma_period")
         initial_cash = st.number_input("Initial Cash ($)", min_value=1000, value=100000, step=1000)
-
-    st.info(f"Downloading data for {period} with {interval} interval...")
+    ticker = get_ticker(assets_dict,asset_class,product_type,name)
     if ticker == "":
         ticker = "^GSPC"
-    df = yf.download(ticker, period=period, interval=interval)
+    df = get_data(ticker, start=start)
     # If the columns have MultiIndex, flatten them
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
