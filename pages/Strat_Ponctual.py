@@ -120,7 +120,6 @@ if __name__ == "__main__":
     indicator_full['price_change'] = indicator_full['price'].pct_change()
     indicator_full['strategy_return'] = indicator_full['price_change'] * indicator_full['signal'].shift(1)
     indicator_full['cum_return'] = (1 + indicator_full['strategy_return']).cumprod() - 1
-    st.write(indicator_full)
     total_return = indicator_full['cum_return'].iloc[-1] * 100 if not np.isnan(indicator_full['cum_return'].iloc[-1]) else 0
     cols = st.columns([3,2,2,3])
     with cols[0]:
