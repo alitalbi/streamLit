@@ -242,7 +242,7 @@ def percentile_score(window):
     return (nb_values_below / len(window)) * 100
 
 
-def calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score):
+def calculate_regime_confidence(hurst, adf_stat):
     """Calculate confidence score for regime classification"""
     confidence_score = 0
 
@@ -250,13 +250,6 @@ def calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score):
     if not pd.isna(hurst):
         if hurst < 0.47 or hurst > 0.53:
             confidence_score += min(abs(hurst - 0.5) * 4, 1.0)
-        else:
-            confidence_score += 0.1
-
-    # Fractal dimension confidence
-    if not pd.isna(fractal_dim):
-        if fractal_dim < 1.47 or fractal_dim > 1.53:
-            confidence_score += min(abs(fractal_dim - 1.5) * 4, 1.0)
         else:
             confidence_score += 0.1
 
@@ -269,16 +262,16 @@ def calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score):
         else:
             confidence_score += 0.1
 
-    # Momentum score confidence
-    if not pd.isna(momentum_score):
-        confidence_score += min(abs(momentum_score) / 3.0, 0.5)
-
     return min(confidence_score / 3.5, 1.0)
+def zscore(data, lookback):
+    """Calculate Z-score"""
+    return (data - data.rolling(lookback).mean()) / data.rolling(lookback).std()
 
 
-def classify_regime_advanced(hurst, fractal_dim, adf_stat, momentum_score):
+
+def classify_regime_advanced(hurst, adf_stat):
     """Advanced regime classification"""
-    confidence = calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score)
+    confidence = calculate_regime_confidence(hurst, adf_stat)
 
     if confidence < 0.3:
         return "UNKNOWN", confidence
@@ -297,17 +290,6 @@ def classify_regime_advanced(hurst, fractal_dim, adf_stat, momentum_score):
         elif hurst < 0.50:
             mean_rev_score += 1
 
-    # Fractal scoring
-    if not pd.isna(fractal_dim):
-        if fractal_dim > 1.53:
-            mean_rev_score += 2
-        elif fractal_dim > 1.50:
-            mean_rev_score += 1
-        elif fractal_dim < 1.47:
-            trend_score += 2
-        elif fractal_dim < 1.50:
-            trend_score += 1
-
     # ADF scoring
     if not pd.isna(adf_stat):
         if adf_stat < -2.862:
@@ -315,12 +297,6 @@ def classify_regime_advanced(hurst, fractal_dim, adf_stat, momentum_score):
         elif adf_stat < -2.567:
             mean_rev_score += 1
 
-    # Momentum score contribution
-    if not pd.isna(momentum_score):
-        if momentum_score > 1:
-            trend_score += 1
-        elif momentum_score < -1:
-            mean_rev_score += 1
 
     # Final classification
     if trend_score > mean_rev_score + 1:
@@ -513,11 +489,12 @@ with st.expander("⚙️ Professional Trading Configuration", expanded=True):
         transaction_fee_bps = st.number_input("Transaction Fee (bps)", value=2, min_value=0, max_value=20)
         confidence_threshold = st.number_input("Min Regime Confidence", value=0.3, min_value=0.1, max_value=0.8,
                                                step=0.1)
+        zscore_lookback = st.number_input("Z-Score Lookback Period (days)", value=63, min_value=20, max_value=252,
+                                          help="Number of days for Z-score calculation (default: 63 ≈ 3 months)")
 
 # Model configuration
 model_type = st.selectbox("📊 Model Type", ["Short-Term (Daily/Weekly)", "Long-Term (Weekly/Monthly)"])
 lookback = 63 if model_type == "Short-Term (Daily/Weekly)" else 252
-fractal_window = 50 if model_type == "Short-Term (Daily/Weekly)" else 100
 hurst_window = 30 if model_type == "Short-Term (Daily/Weekly)" else 60
 
 # Data Loading
@@ -552,8 +529,11 @@ backtest_data.dropna(inplace=True)
 indicators = build_indicators(backtest_data)
 
 # Calculate percentiles
-for col in ["5y_Real", "carry_normalized", "momentum"]:
-    indicators[f"{col}_percentile"] = indicators[col].rolling(lookback).apply(lambda x: percentile_score(x))
+# Calculate percentiles
+for cols in ["5y_Real", "carry_normalized", "momentum"]:
+    indicators[f"{cols}_z"] = zscore(indicators[cols], zscore_lookback)
+    # MODIFIED: Calculate percentiles of the Z-scores instead of raw values
+    indicators[f"{cols}_percentile"] = indicators[f"{cols}_z"].rolling(zscore_lookback).apply(lambda x: percentile_score(x))
 
 # Join with futures data
 indicator_full = indicators[["5y", "5y_Real_percentile", "carry_normalized_percentile", "momentum_percentile"]].join(
@@ -562,19 +542,9 @@ indicator_full.columns = ["5y_yield", "Value_Percentile", "Carry_Percentile", "M
                           "Low", "Close"]
 indicator_full.dropna(inplace=True)
 
-# Calculate technical indicators
-indicator_full['Fractal_Dim'] = compute_fractal_dimension(indicator_full['Close'], fractal_window)
 indicator_full['Hurst'] = indicator_full['Close'].rolling(window=hurst_window).apply(calculate_hurst, raw=False)
 indicator_full['RSI'] = calculate_rsi(indicator_full['Close'])
-indicator_full['Williams_R'] = calculate_williams_r(indicator_full['High'], indicator_full['Low'],
-                                                    indicator_full['Close'])
-indicator_full['CCI'] = calculate_cci(indicator_full['High'], indicator_full['Low'], indicator_full['Close'])
-indicator_full['Momentum_Score'] = indicator_full.apply(
-    lambda row: calculate_momentum_score(row['RSI'], row['Williams_R'], row['CCI']), axis=1
-)
 
-
-# ADF test
 def rolling_adf(series, window=hurst_window):
     adf_stats = []
     for i in range(len(series)):
@@ -593,8 +563,7 @@ indicator_full['ADF_Stat'] = rolling_adf(indicator_full['Close'])
 regime_results = []
 for idx, row in indicator_full.iterrows():
     regime, confidence = classify_regime_advanced(
-        row['Hurst'], row['Fractal_Dim'], row['ADF_Stat'], row['Momentum_Score']
-    )
+        row['Hurst'], row['ADF_Stat'])
     regime_results.append((regime, confidence))
 
 indicator_full['Regime'] = [r[0] for r in regime_results]
@@ -602,7 +571,7 @@ indicator_full['Regime_Confidence'] = [r[1] for r in regime_results]
 
 # Dynamic weight optimization by regime
 regime_weights = {
-    'TRENDING': [60, 15, 25],  # More momentum in trending
+    'TRENDING': [10, 15, 75],  # More momentum in trending
     'MEAN_REVERTING': [75, 20, 5],  # More value in mean reverting
     'UNKNOWN': [65, 25, 10]  # Balanced for unknown
 }
@@ -896,10 +865,10 @@ with col1:
 
         status_table = pd.DataFrame({
             "Metric": ["Value Percentile", "Carry Percentile", "Momentum Percentile",
-                       "🎯 Dynamic Agg %ile", "Enhanced Momentum Score", "Market Regime", "Regime Confidence"],
+                       "🎯 Dynamic Agg %ile", "Market Regime", "Regime Confidence"],
             "Current Value": [f"{latest['Value_Percentile']:.1f}%", f"{latest['Carry_Percentile']:.1f}%",
                               f"{latest['Momentum_Percentile']:.1f}%", f"{latest['Agg_Percentile_Dynamic']:.1f}%",
-                              f"{latest['Momentum_Score']:.0f}/3", latest['Regime'],
+                             f"{latest['Regime']}",
                               f"{latest['Regime_Confidence']:.2f}"],
             "Weight": [f"{latest['Current_Weight_Value']:.0f}%", f"{latest['Current_Weight_Carry']:.0f}%",
                        f"{latest['Current_Weight_Momentum']:.0f}%", "100%", "Indicator", "Classification", "Meta"]
@@ -912,18 +881,15 @@ with col2:
         latest = display_data.iloc[-1]
 
         tech_table = pd.DataFrame({
-            "Indicator": ["Hurst Exponent", "Fractal Dimension", "ADF Statistic",
+            "Indicator": ["Hurst Exponent", "ADF Statistic",
                           "RSI (14)", "Williams %R (14)", "CCI (20)"],
-            "Value": [f"{latest['Hurst']:.3f}", f"{latest['Fractal_Dim']:.3f}",
-                      f"{latest['ADF_Stat']:.2f}", f"{latest['RSI']:.1f}",
+            "Value": [f"{latest['Hurst']:.3f}",f"{latest['ADF_Stat']:.2f}", f"{latest['RSI']:.1f}",
                       f"{latest['Williams_R']:.1f}", f"{latest['CCI']:.1f}"],
             "Signal": [
                 "🟢 Trending" if latest['Hurst'] > 0.53 else "🔴 Mean-Rev" if latest['Hurst'] < 0.47 else "🟡 Neutral",
-                "🔴 Ranging" if latest['Fractal_Dim'] > 1.53 else "🟢 Trending" if latest[
-                                                                                     'Fractal_Dim'] < 1.47 else "🟡 Mixed",
                 "🟢 Mean-Rev" if latest['ADF_Stat'] < -2.862 else "🟡 Weak" if latest[
                                                                                  'ADF_Stat'] < -2.567 else "🔴 Random",
-                "🔴 Overbought" if latest['RSI'] > 70 else "🟢 Oversold" if latest['RSI'] < 30 else "🟡 Neutral",
+                "🔴 Overbought" if latest['RSI'] > 60 else "🟢 Oversold" if latest['RSI'] < 40 else "🟡 Neutral",
                 "🔴 Overbought" if latest['Williams_R'] > -20 else "🟢 Oversold" if latest[
                                                                                       'Williams_R'] < -80 else "🟡 Neutral",
                 "🔴 Overbought" if latest['CCI'] > 100 else "🟢 Oversold" if latest['CCI'] < -100 else "🟡 Neutral"
@@ -1108,24 +1074,13 @@ with st.expander("📖 Complete Trading System Documentation & Methodology", exp
       - H < 0.47: Mean-reverting behavior (anti-persistent)
       - 0.47 ≤ H ≤ 0.53: Random walk behavior
 
-    - **Fractal Dimension**: Quantifies market complexity and roughness
-      - FD < 1.47: Smooth trending markets
-      - FD > 1.53: Rough, ranging markets
-      - 1.47 ≤ FD ≤ 1.53: Transitional behavior
-
     - **Augmented Dickey-Fuller Test**: Tests for mean reversion stationarity
       - ADF < -2.862: Strong mean reversion (99% confidence)
       - ADF < -2.567: Moderate mean reversion (95% confidence)
       - ADF ≥ -2.567: Non-stationary (trending)
 
-    - **Enhanced Momentum Score**: Composite of RSI, Williams %R, and CCI
-      - Range: -3 to +3
-      - Positive values indicate momentum/trending conditions
-      - Negative values suggest mean-reverting conditions
-
     **Current Model Configuration:**
     - Lookback Period: {lookback} days
-    - Fractal Window: {fractal_window} days  
     - Hurst Window: {hurst_window} days
     - Confidence Threshold: {confidence_threshold:.1f}
     """)

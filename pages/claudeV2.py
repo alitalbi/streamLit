@@ -6,8 +6,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import urllib
 from fredapi import Fred
-from scipy import stats
 import warnings
+import json
 
 warnings.filterwarnings('ignore')
 
@@ -35,26 +35,6 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 4px 16px rgba(0,0,0,0.05);
     }
-    .trading-alert {
-        border-left: 6px solid #28a745;
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        padding: 1.2rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
-    .stExpander > div:first-child {
-        background: linear-gradient(90deg, #495057 0%, #6c757d 100%);
-        color: white;
-        border-radius: 8px;
-    }
-    .chart-container {
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        margin-bottom: 1rem;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -67,6 +47,7 @@ assets_dict = {
 }
 
 
+@st.cache_data
 def get_data(ticker, start):
     """Fetch data from GitHub repository"""
     ticker_request = ticker.replace("=", "%3D")
@@ -82,6 +63,7 @@ def get_data(ticker, start):
         return pd.DataFrame()
 
 
+@st.cache_data
 def fred_import(ticker, start_date):
     """Import data from FRED"""
     try:
@@ -90,37 +72,6 @@ def fred_import(ticker, start_date):
     except Exception as e:
         st.error(f"Error loading FRED data: {e}")
         return pd.DataFrame()
-
-
-def compute_fractal_dimension(price_series, scaling_factor):
-    """Compute fractal dimension for price series"""
-    if len(price_series) < scaling_factor:
-        return np.full(len(price_series), np.nan)
-
-    fractal_dims = []
-    for i in range(len(price_series)):
-        if i < scaling_factor:
-            fractal_dims.append(np.nan)
-            continue
-
-        window = price_series.iloc[i - scaling_factor:i + 1]
-        if len(window) < 2:
-            fractal_dims.append(np.nan)
-            continue
-
-        normalized_prices = (window - window.iloc[0]) / window.iloc[0] if window.iloc[0] != 0 else window - window.iloc[
-            0]
-        path_length = np.sum(np.abs(np.diff(normalized_prices)))
-        straight_distance = abs(normalized_prices.iloc[-1] - normalized_prices.iloc[0])
-
-        if straight_distance == 0:
-            fractal_dim = 1.0
-        else:
-            fractal_dim = 1 + (np.log(path_length) - np.log(straight_distance)) / np.log(2)
-
-        fractal_dims.append(fractal_dim)
-
-    return pd.Series(fractal_dims, index=price_series.index)
 
 
 def calculate_hurst(ts):
@@ -172,47 +123,46 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + rs))
 
 
-def calculate_williams_r(high, low, close, period=14):
-    """Williams %R calculation"""
-    highest_high = high.rolling(window=period).max()
-    lowest_low = low.rolling(window=period).min()
-    williams_r = -100 * (highest_high - close) / (highest_high - lowest_low)
-    return williams_r
+def calculate_keltner_channel(high, low, close, period=20, multiplier=2.0):
+    """Calculate Keltner Channels"""
+    ema = close.ewm(span=period).mean()
+    atr = ((high - low).abs()).rolling(window=period).mean()
+
+    upper_channel = ema + (multiplier * atr)
+    lower_channel = ema - (multiplier * atr)
+
+    return upper_channel, ema, lower_channel
 
 
-def calculate_cci(high, low, close, period=20):
-    """CCI calculation"""
-    tp = (high + low + close) / 3
-    sma = tp.rolling(window=period).mean()
-    mad = tp.rolling(window=period).apply(lambda x: np.mean(np.abs(x - np.mean(x))), raw=True)
-    cci = (tp - sma) / (0.015 * mad)
-    return cci
+def classify_regime(indicator_value, regime_method, hurst_trend_thresh=0.53, hurst_range_thresh=0.47,
+                    adf_trend_thresh=-2.567, adf_range_thresh=-2.862):
+    """Classify regime based on selected method"""
+    if pd.isna(indicator_value):
+        return "UNKNOWN", 0.0
 
+    if regime_method == "Hurst Exponent":
+        confidence = min(abs(indicator_value - 0.5) * 4, 1.0)
+        if indicator_value > hurst_trend_thresh:
+            return "TRENDING", confidence
+        elif indicator_value < hurst_range_thresh:
+            return "MEAN_REVERTING", confidence
+        else:
+            return "UNKNOWN", confidence
 
-def calculate_momentum_score(rsi, williams_r, cci, rsi_ob=70, rsi_os=30, williams_ob=-20, williams_os=-80, cci_ob=100,
-                             cci_os=-100):
-    """Enhanced momentum score using RSI, Williams %R, and CCI"""
-    score = 0
+    elif regime_method == "ADF Test":
+        confidence = 0.5  # Base confidence for ADF
+        if indicator_value < adf_range_thresh:  # Strong mean reversion
+            confidence = 1.0
+            return "MEAN_REVERTING", confidence
+        elif indicator_value < adf_trend_thresh:  # Moderate mean reversion
+            confidence = 0.7
+            return "MEAN_REVERTING", confidence
+        else:
+            confidence = 0.3
+            return "TRENDING", confidence
 
-    # RSI component
-    if rsi > rsi_ob:
-        score += 1
-    elif rsi < rsi_os:
-        score -= 1
-
-    # Williams %R component
-    if williams_r > williams_ob:
-        score += 1
-    elif williams_r < williams_os:
-        score -= 1
-
-    # CCI component
-    if cci > cci_ob:
-        score += 1
-    elif cci < cci_os:
-        score -= 1
-
-    return score
+    else:  # Manual override
+        return regime_method, 1.0
 
 
 def build_indicators(data):
@@ -234,838 +184,689 @@ def percentile_score(window):
     return (nb_values_below / len(window)) * 100
 
 
-def calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score):
-    """Calculate confidence score for regime classification"""
-    confidence_score = 0
-
-    # Hurst confidence
-    if not pd.isna(hurst):
-        if hurst < 0.47 or hurst > 0.53:
-            confidence_score += min(abs(hurst - 0.5) * 4, 1.0)
-        else:
-            confidence_score += 0.1
-
-    # Fractal dimension confidence
-    if not pd.isna(fractal_dim):
-        if fractal_dim < 1.47 or fractal_dim > 1.53:
-            confidence_score += min(abs(fractal_dim - 1.5) * 4, 1.0)
-        else:
-            confidence_score += 0.1
-
-    # ADF test confidence
-    if not pd.isna(adf_stat):
-        if adf_stat < -2.862:
-            confidence_score += 1.0
-        elif adf_stat < -2.567:
-            confidence_score += 0.5
-        else:
-            confidence_score += 0.1
-
-    # Momentum score confidence
-    if not pd.isna(momentum_score):
-        confidence_score += min(abs(momentum_score) / 3.0, 0.5)
-
-    return min(confidence_score / 3.5, 1.0)
+def zscore(data, lookback):
+    """Calculate Z-score"""
+    return (data - data.rolling(lookback).mean()) / data.rolling(lookback).std()
 
 
-def classify_regime_advanced(hurst, fractal_dim, adf_stat, momentum_score):
-    """Advanced regime classification"""
-    confidence = calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score)
-
-    if confidence < 0.3:
-        return "UNKNOWN", confidence
-
-    trend_score = 0
-    mean_rev_score = 0
-
-    # Hurst scoring
-    if not pd.isna(hurst):
-        if hurst > 0.53:
-            trend_score += 2
-        elif hurst > 0.50:
-            trend_score += 1
-        elif hurst < 0.47:
-            mean_rev_score += 2
-        elif hurst < 0.50:
-            mean_rev_score += 1
-
-    # Fractal scoring
-    if not pd.isna(fractal_dim):
-        if fractal_dim > 1.53:
-            mean_rev_score += 2
-        elif fractal_dim > 1.50:
-            mean_rev_score += 1
-        elif fractal_dim < 1.47:
-            trend_score += 2
-        elif fractal_dim < 1.50:
-            trend_score += 1
-
-    # ADF scoring
-    if not pd.isna(adf_stat):
-        if adf_stat < -2.862:
-            mean_rev_score += 2
-        elif adf_stat < -2.567:
-            mean_rev_score += 1
-
-    # Momentum score contribution
-    if not pd.isna(momentum_score):
-        if momentum_score > 1:
-            trend_score += 1
-        elif momentum_score < -1:
-            mean_rev_score += 1
-
-    # Final classification
-    if trend_score > mean_rev_score + 1:
-        return "TRENDING", confidence
-    elif mean_rev_score > trend_score + 1:
-        return "MEAN_REVERTING", confidence
-    else:
-        return "UNKNOWN", confidence
+def calculate_agg_percentile(data, weights):
+    """Calculate aggregate percentile with given weights"""
+    value_w, carry_w, momentum_w = weights
+    return (data['Value_Percentile'] * value_w +
+            data['Carry_Percentile'] * carry_w +
+            data['Momentum_Percentile'] * momentum_w) / 100
 
 
-class AdvancedTradingSystem:
-    """Advanced trading system with capital allocation and professional position management"""
+def check_rsi_confirmation(rsi, signal_type, rsi_overbought, rsi_oversold):
+    """Check RSI confirmation for signals"""
+    if signal_type == "BUY" and rsi < rsi_oversold:
+        return True
+    elif signal_type == "SELL" and rsi > rsi_overbought:
+        return True
+    return False
 
-    def __init__(self, initial_cash=100000, transaction_fee_bps=2, capital_allocation_pct=100):
-        self.initial_cash = initial_cash
-        self.cash = initial_cash
-        self.position = 0
-        self.position_size = 0
-        self.entry_price = 0
-        self.entry_date = None
-        self.realized_pnl = 0
-        self.unrealized_pnl = 0
-        self.transaction_fee_bps = transaction_fee_bps
-        self.capital_allocation_pct = capital_allocation_pct
-        self.last_signal_strength = 0
-        self.trade_history = []
-        self.daily_pnl = []
 
-    def calculate_position_size(self, price):
-        """Calculate position size based on capital allocation"""
-        available_capital = self.cash * (self.capital_allocation_pct / 100)
-        position_size = int(available_capital / price)  # Number of contracts
-        return max(position_size, 1)  # Minimum 1 contract
+def check_keltner_confirmation(close, upper_channel, lower_channel, signal_type, regime):
+    """Check Keltner Channel confirmation for signals"""
+    if signal_type == "SELL" and close > upper_channel and regime == "MEAN_REVERTING":
+        return True
+    elif signal_type == "BUY" and close < lower_channel and regime == "MEAN_REVERTING":
+        return True
+    return False
 
-    def calculate_transaction_cost(self, price, quantity):
-        """Calculate transaction cost in bps"""
-        notional = price * abs(quantity)
-        return notional * (self.transaction_fee_bps / 10000)
 
-    def check_signal_strength(self, agg_percentile, buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max):
-        """Check if signal is in trading zones and calculate strength"""
-        if buy_zone_min <= agg_percentile <= buy_zone_max:
-            return "BUY", (agg_percentile - buy_zone_min) / (buy_zone_max - buy_zone_min)
-        elif sell_zone_min <= agg_percentile <= sell_zone_max:
-            return "SELL", (sell_zone_max - agg_percentile) / (sell_zone_max - sell_zone_min)
-        else:
-            return "NEUTRAL", 0.0
+def backtest_strategy_with_confirmations(data, weights, buy_zone, sell_zone,
+                                         use_rsi_confirm, use_keltner_confirm,
+                                         use_regime_confirm, regime_method,
+                                         rsi_period, rsi_overbought, rsi_oversold,
+                                         keltner_period, keltner_multiplier,
+                                         hurst_window,
+                                         transaction_cost_bps, capital_allocation_pct,
+                                         initial_cash=100000):
+    """Enhanced backtest with RSI and Keltner confirmations"""
 
-    def can_trade(self, signal_type, signal_strength, price, regime):
-        """Check if we can execute the trade"""
-        # If regime is UNKNOWN, close position
-        if regime == "UNKNOWN" and self.position != 0:
-            return True, "CLOSE_UNKNOWN"
+    if len(data) < 100:
+        return {'total_pnl': -999999, 'max_drawdown': 999, 'num_trades': 0, 'win_rate': 0,
+                'trades': [], 'total_return_pct': -999}
 
-        # If signal is neutral and we have position, close it
-        if signal_type == "NEUTRAL" and self.position != 0:
-            return True, "CLOSE_NEUTRAL"
+    data_copy = data.copy()
+    data_copy['Agg_Percentile'] = calculate_agg_percentile(data_copy, weights)
 
-        # If we're flat, we can open any position (check sufficient cash)
-        if self.position == 0 and signal_type in ["BUY", "SELL"]:
-            required_capital = price * self.calculate_position_size(price)
-            if self.cash >= required_capital:
-                return True, f"OPEN_{signal_type}"
-            else:
-                return False, "INSUFFICIENT_CASH"
+    # Calculate additional indicators if needed
+    if use_rsi_confirm:
+        data_copy['RSI'] = calculate_rsi(data_copy['Close'], rsi_period)
 
-        # If we have position in same direction, check if signal is stronger
-        if (self.position > 0 and signal_type == "BUY") or (self.position < 0 and signal_type == "SELL"):
-            if signal_strength > abs(self.last_signal_strength) + 0.1:  # Need 10% stronger signal
-                additional_size = self.calculate_position_size(price) // 2  # Add half position
-                required_capital = price * additional_size
-                if self.cash >= required_capital:
-                    return True, f"ADD_{signal_type}"
+    if use_keltner_confirm:
+        upper_ch, middle_ch, lower_ch = calculate_keltner_channel(
+            data_copy['High'], data_copy['Low'], data_copy['Close'],
+            keltner_period, keltner_multiplier)
+        data_copy['Keltner_Upper'] = upper_ch
+        data_copy['Keltner_Lower'] = lower_ch
+
+    # Calculate regime indicators
+    data_copy['Hurst'] = data_copy['Close'].rolling(window=hurst_window).apply(calculate_hurst, raw=False)
+
+    if regime_method == "ADF Test":
+        def rolling_adf(series, window):
+            adf_stats = []
+            for i in range(len(series)):
+                if i < window:
+                    adf_stats.append(np.nan)
                 else:
-                    return False, "INSUFFICIENT_CASH_ADD"
-            else:
-                return False, "SIGNAL_TOO_WEAK"
+                    window_data = series.iloc[i - window:i + 1]
+                    stat, _ = adf_test(window_data)
+                    adf_stats.append(stat)
+            return pd.Series(adf_stats, index=series.index)
 
-        # If we have position in opposite direction, close and reverse
-        if (self.position > 0 and signal_type == "SELL") or (self.position < 0 and signal_type == "BUY"):
-            return True, f"REVERSE_{signal_type}"
+        data_copy['ADF_Stat'] = rolling_adf(data_copy['Close'], hurst_window)
+        regime_indicator = data_copy['ADF_Stat']
+    else:
+        regime_indicator = data_copy['Hurst']
 
-        return False, "NO_ACTION"
-
-    def execute_trade(self, action_type, price, date, signal_strength=0):
-        """Execute trade with proper P&L calculation and capital allocation"""
-        quantity = self.calculate_position_size(price)
-        transaction_cost = self.calculate_transaction_cost(price, quantity)
-
-        trade_info = {
-            'date': date,
-            'action': action_type,
-            'price': price,
-            'quantity': quantity,
-            'cost': transaction_cost,
-            'cash_before': self.cash,
-            'position_before': self.position
-        }
-
-        if "CLOSE" in action_type or "REVERSE" in action_type:
-            if self.position != 0:
-                # Close existing position
-                pnl = (price - self.entry_price) * self.position - transaction_cost
-                self.realized_pnl += pnl
-                self.cash += pnl
-                self.position = 0
-                self.unrealized_pnl = 0
-
-                trade_info['pnl'] = pnl
-                trade_info['realized_pnl'] = self.realized_pnl
-
-        if "OPEN" in action_type or "REVERSE" in action_type or "ADD" in action_type:
-            if "BUY" in action_type:
-                new_position = quantity
-            elif "SELL" in action_type:
-                new_position = -quantity
-            else:
-                new_position = 0
-
-            if "ADD" in action_type:
-                self.position += new_position // 2  # Add half position
-            else:
-                self.position = new_position
-                self.entry_price = price
-                self.entry_date = date
-
-            self.cash -= transaction_cost
-            self.last_signal_strength = signal_strength
-
-        trade_info['cash_after'] = self.cash
-        trade_info['position_after'] = self.position
-        self.trade_history.append(trade_info)
-
-        return trade_info
-
-    def update_unrealized_pnl(self, current_price):
-        """Update unrealized P&L"""
-        if self.position != 0:
-            self.unrealized_pnl = (current_price - self.entry_price) * self.position
+    # Regime classification
+    regime_results = []
+    for _, row in data_copy.iterrows():
+        if regime_method == "ADF Test":
+            regime, confidence = classify_regime(row['ADF_Stat'], regime_method)
         else:
-            self.unrealized_pnl = 0
+            regime, confidence = classify_regime(row['Hurst'], regime_method)
+        regime_results.append((regime, confidence))
 
-    def get_total_pnl(self):
-        """Get total P&L"""
-        return self.realized_pnl + self.unrealized_pnl
+    data_copy['Regime'] = [r[0] for r in regime_results]
+    data_copy['Regime_Confidence'] = [r[1] for r in regime_results]
 
-    def get_portfolio_value(self):
-        """Get current portfolio value"""
-        return self.cash + self.unrealized_pnl
+    data_copy['Signal'] = 0
+    data_copy['Executed'] = False
 
-    def get_capital_utilization(self):
-        """Get current capital utilization"""
-        if self.position != 0:
-            position_value = abs(self.position * self.entry_price)
-            return (position_value / self.initial_cash) * 100
-        return 0
+    # Generate base signals
+    buy_min, buy_max = buy_zone
+    sell_min, sell_max = sell_zone
+
+    for idx, row in data_copy.iterrows():
+        agg_perc = row['Agg_Percentile']
+        base_signal = None
+
+        if buy_min <= agg_perc <= buy_max:
+            base_signal = "BUY"
+        elif sell_min <= agg_perc <= sell_max:
+            base_signal = "SELL"
+
+        if base_signal:
+            confirmed = True
+
+            # Apply regime confirmation if enabled
+            if use_regime_confirm and row['Regime'] == "UNKNOWN":
+                confirmed = False
+
+            # Apply other confirmations if enabled
+            if confirmed and (use_rsi_confirm or use_keltner_confirm):
+                confirmations = []
+
+                if use_rsi_confirm:
+                    rsi_confirmed = check_rsi_confirmation(
+                        row['RSI'], base_signal, rsi_overbought, rsi_oversold)
+                    confirmations.append(rsi_confirmed)
+
+                if use_keltner_confirm:
+                    keltner_confirmed = check_keltner_confirmation(
+                        row['Close'], row['Keltner_Upper'], row['Keltner_Lower'],
+                        base_signal, row['Regime'])
+                    confirmations.append(keltner_confirmed)
+
+                # If both confirmations are enabled, both must be true
+                # If only one is enabled, that one must be true
+                confirmed = all(confirmations) if confirmations else True
+
+            if confirmed:
+                data_copy.loc[idx, 'Signal'] = 1 if base_signal == "BUY" else -1
+
+    # Trading simulation
+    cash = initial_cash
+    position = 0
+    position_size = 0
+    entry_price = 0
+    total_pnl = 0
+    trades = []
+    equity_curve = [initial_cash]
+
+    for idx, row in data_copy.iterrows():
+        current_price = row['Close']
+        signal = row['Signal']
+
+        # Trading logic
+        if signal != 0 and signal != position:
+            # Close existing position
+            if position != 0:
+                pnl = (current_price - entry_price) * position_size
+                total_pnl += pnl
+                cash += pnl
+                cash -= abs(pnl) * (transaction_cost_bps / 10000)
+
+                return_pct = ((current_price - entry_price) / entry_price) * position * 100
+                trades.append({
+                    'entry_date': entry_date,
+                    'exit_date': idx,
+                    'entry_price': entry_price,
+                    'exit_price': current_price,
+                    'position': 'LONG' if position > 0 else 'SHORT',
+                    'pnl': pnl,
+                    'return_pct': return_pct,
+                    'exit_reason': 'SIGNAL'
+                })
+
+                data_copy.loc[idx, 'Executed'] = True
+
+            # Open new position
+            position = signal
+            allocated_capital = cash * (capital_allocation_pct / 100)
+            position_size = allocated_capital / current_price * position
+            entry_price = current_price
+            entry_date = idx
+            cash -= abs(allocated_capital) * (transaction_cost_bps / 10000)
+
+            data_copy.loc[idx, 'Executed'] = True
+
+        # Update equity curve
+        if position != 0:
+            unrealized_pnl = (current_price - entry_price) * position_size
+            current_equity = cash + unrealized_pnl
+        else:
+            current_equity = cash
+        equity_curve.append(current_equity)
+
+    # Close final position
+    if position != 0:
+        final_price = data_copy.iloc[-1]['Close']
+        pnl = (final_price - entry_price) * position_size
+        total_pnl += pnl
+        return_pct = ((final_price - entry_price) / entry_price) * position * 100
+
+        trades.append({
+            'entry_date': entry_date,
+            'exit_date': data_copy.index[-1],
+            'entry_price': entry_price,
+            'exit_price': final_price,
+            'position': 'LONG' if position > 0 else 'SHORT',
+            'pnl': pnl,
+            'return_pct': return_pct,
+            'exit_reason': 'FINAL'
+        })
+
+    # Calculate performance metrics
+    equity_curve = np.array(equity_curve)
+    running_max = np.maximum.accumulate(equity_curve)
+    drawdown = (equity_curve - running_max) / running_max * 100
+    max_drawdown = abs(np.min(drawdown)) if len(drawdown) > 0 else 0
+
+    return {
+        'total_pnl': total_pnl,
+        'total_return_pct': (total_pnl / initial_cash) * 100,
+        'max_drawdown': max_drawdown,
+        'num_trades': len(trades),
+        'win_rate': len([t for t in trades if t['pnl'] > 0]) / len(trades) * 100 if trades else 0,
+        'equity_curve': equity_curve,
+        'final_value': initial_cash + total_pnl,
+        'trades': trades,
+        'data_with_signals': data_copy
+    }
 
 
 # Streamlit App Header
 st.markdown(
-    '<div class="main-header"><h1>💹 Professional Treasury Futures Trading System</h1><p>Advanced Regime-Aware Quantitative Trading & Backtesting Platform</p></div>',
+    '<div class="main-header"><h1>💹 Professional Treasury Trading System with Grid Search</h1><p>Enhanced with RSI & Keltner Channel Confirmations + Regime Analysis</p></div>',
     unsafe_allow_html=True)
 
-# Enhanced Professional Trading Configuration
-with st.expander("⚙️ Professional Trading Configuration", expanded=True):
-    col1, col2, col3, col4, col5 = st.columns(5)
+# Date Configuration - ALWAYS VISIBLE
+st.markdown("### 📅 Trading & Training Period Configuration")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    start_date_input = st.date_input("Trading Start Date", value=datetime(2023, 1, 1))
+with col2:
+    end_date_input = st.date_input("Trading End Date", value=datetime.now().date())
+with col3:
+    train_years = st.selectbox("Training Years (before start)", [1, 2, 3, 5, 7, 10], index=2)
+
+# Calculate and display training period
+training_start_date = start_date_input - timedelta(days=train_years * 365)
+st.info(
+    f"Training Period: {training_start_date.strftime('%Y-%m-%d')} to {start_date_input.strftime('%Y-%m-%d')} ({train_years} years)")
+st.info(f"Trading Period: {start_date_input.strftime('%Y-%m-%d')} to {end_date_input.strftime('%Y-%m-%d')}")
+
+# Configuration Section
+with st.expander("⚙️ Additional Trading Configuration", expanded=True):
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.markdown("**📅 Trading Period**")
-        start_date_input = st.date_input("Start Date", value=datetime(2023, 1, 1))
-        end_date_input = st.date_input("End Date", value=datetime.now().date())
+        st.markdown("**💰 Capital Management**")
+        initial_cash = st.number_input("Initial Capital ($)", value=100000, min_value=10000, step=10000)
+        capital_allocation_pct = st.slider("Capital per Trade (%)", 10, 100, 25)
+        transaction_cost_bps = st.number_input("Transaction Cost (bps)", 0, 50, 2)
 
     with col2:
-        st.markdown("**🎯 Buy Zone (%)**")
-        buy_zone_min = st.number_input("Buy Min", value=90, min_value=70, max_value=95)
-        buy_zone_max = st.number_input("Buy Max", value=100, min_value=95, max_value=100)
+        st.markdown("**🎯 Signal Zones**")
+        buy_zone_min = st.number_input("Buy Zone Min (%)", value=90, min_value=70, max_value=95)
+        buy_zone_max = st.number_input("Buy Zone Max (%)", value=100, min_value=95, max_value=100)
+        sell_zone_min = st.number_input("Sell Zone Min (%)", value=0, min_value=0, max_value=10)
+        sell_zone_max = st.number_input("Sell Zone Max (%)", value=10, min_value=5, max_value=20)
+
+        st.markdown("**🔍 Z-Score Configuration**")
+        zscore_lookback = st.number_input("Z-Score Lookback (days)", value=63, min_value=20, max_value=252)
 
     with col3:
-        st.markdown("**🎯 Sell Zone (%)**")
-        sell_zone_min = st.number_input("Sell Min", value=0, min_value=0, max_value=10)
-        sell_zone_max = st.number_input("Sell Max", value=20, min_value=10, max_value=30)
+        st.markdown("**📊 RSI Configuration**")
+        use_rsi_confirm = st.checkbox("Use RSI Confirmation", value=False)
+        rsi_period = st.number_input("RSI Period", value=14, min_value=5, max_value=50)
+        rsi_overbought = st.number_input("RSI Overbought", value=60, min_value=50, max_value=80)
+        rsi_oversold = st.number_input("RSI Oversold", value=40, min_value=20, max_value=50)
+
+        st.markdown("**🔄 Regime Configuration**")
+        regime_method = st.selectbox("Regime Indicator",
+                                     ["Hurst Exponent", "ADF Test", "TRENDING", "MEAN_REVERTING", "UNKNOWN"])
+        use_regime_confirm = st.checkbox("Filter Unknown Regimes", value=True)
+        hurst_window = st.number_input("Regime Indicator Window", value=50, min_value=20, max_value=100)
 
     with col4:
-        st.markdown("**💰 Portfolio Setup**")
-        initial_cash = st.number_input("Initial Capital ($)", value=100000, min_value=10000, step=10000)
-        capital_allocation_pct = st.number_input("Capital per Trade (%)", value=25, min_value=5, max_value=100, step=5)
+        st.markdown("**📈 Keltner Channel Config**")
+        use_keltner_confirm = st.checkbox("Use Keltner Confirmation", value=False)
+        keltner_period = st.number_input("Keltner Period", value=20, min_value=10, max_value=50)
+        keltner_multiplier = st.number_input("Keltner Multiplier", value=2.0, min_value=1.0, max_value=3.0, step=0.1)
 
-    with col5:
-        st.markdown("**🔧 Trading Config**")
-        transaction_fee_bps = st.number_input("Transaction Fee (bps)", value=2, min_value=0, max_value=20)
-        confidence_threshold = st.number_input("Min Regime Confidence", value=0.3, min_value=0.1, max_value=0.8,
-                                               step=0.1)
+        st.caption("Keltner confirms: Mean reversion signals near bands")
 
-# Model configuration
-model_type = st.selectbox("📊 Model Type", ["Short-Term (Daily/Weekly)", "Long-Term (Weekly/Monthly)"])
-lookback = 63 if model_type == "Short-Term (Daily/Weekly)" else 252
-fractal_window = 50 if model_type == "Short-Term (Daily/Weekly)" else 100
-hurst_window = 30 if model_type == "Short-Term (Daily/Weekly)" else 60
+# Grid Search Configuration
+with st.expander("🔍 Grid Search Optimization", expanded=False):
+    col1, col2, col3 = st.columns(3)
 
-# Data Loading
-start_date = start_date_input - timedelta(days=365)
-start_date_str = start_date.strftime("%Y-%m-%d")
+    with col1:
+        enable_grid_search = st.checkbox("Enable Grid Search Optimization", value=False)
+        weight_step = st.selectbox("Weight Step Size (%)", [5, 10, 20], index=1) if enable_grid_search else 10
 
-with st.spinner("🔄 Loading market data and calculating indicators..."):
-    try:
-        _2yUS = fred_import(assets_dict["2y US"], start_date_str)
+    with col2:
+        optimization_goal = st.selectbox("Optimization Goal",
+                                         ["Max Return", "Max Return/DD Ratio"]) if enable_grid_search else "Max Return"
+
+    with col3:
+        if enable_grid_search:
+            st.info(f"Will test {len(range(weight_step, 101, weight_step)) ** 2} combinations")
+
+# Manual Weight Configuration (if not using grid search)
+if not enable_grid_search:
+    st.markdown("**⚖️ Manual Weight Configuration**")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        value_weight = st.slider("Value Weight (%)", 0, 100, 70)
+    with col2:
+        carry_weight = st.slider("Carry Weight (%)", 0, 100, 20)
+    with col3:
+        momentum_weight = st.slider("Momentum Weight (%)", 0, 100, 10)
+
+    if abs(value_weight + carry_weight + momentum_weight - 100) > 0.01:
+        st.error("⚠️ Weights must sum to 100%")
+        st.stop()
+
+# Main Execution Button
+if st.button("🚀 Run Analysis", type="primary"):
+
+    # Calculate training start date
+    training_start_date = start_date_input - timedelta(days=train_years * 365)
+
+    with st.spinner("Loading data..."):
+        # Load data from training start
+        training_start_str = training_start_date.strftime("%Y-%m-%d")
+
+        _2yUS = fred_import(assets_dict["2y US"], training_start_str)
         _2yUS.columns = ["2y"]
 
-        _5yUS = get_data(assets_dict["5y US"], start_date_str)
+        _5yUS = get_data(assets_dict["5y US"], training_start_str)
         _5yUS.columns = ["5y", "High", "Low", "Open"]
 
-        _5yUS_real = fred_import(assets_dict["5y US Real"], start_date_str)
+        _5yUS_real = fred_import(assets_dict["5y US Real"], training_start_str)
         _5yUS_real.columns = ["5y_Real"]
         _5yUS_real = _5yUS_real.interpolate(method="polynomial", order=2)
 
-        _5yUS_fut = get_data(assets_dict["5y US Future"], start_date_str)
+        _5yUS_fut = get_data(assets_dict["5y US Future"], training_start_str)
 
         if any(df.empty for df in [_2yUS, _5yUS, _5yUS_real, _5yUS_fut]):
-            st.error("Failed to load required data. Please check data sources.")
+            st.error("Failed to load required data")
             st.stop()
 
-    except Exception as e:
-        st.error(f"Data loading error: {e}")
-        st.stop()
+    # Build indicators
+    backtest_data = _2yUS.join(_5yUS_real).join(_5yUS)
+    backtest_data.dropna(inplace=True)
+    indicators = build_indicators(backtest_data)
 
-# Build indicators
-backtest_data = _2yUS.join(_5yUS_real).join(_5yUS)
-backtest_data.dropna(inplace=True)
-indicators = build_indicators(backtest_data)
+    # Calculate percentiles
+    for cols in ["5y_Real", "carry_normalized", "momentum"]:
+        indicators[f"{cols}_z"] = zscore(indicators[cols], zscore_lookback)
+        indicators[f"{cols}_percentile"] = indicators[f"{cols}_z"].rolling(zscore_lookback).apply(
+            lambda x: percentile_score(x))
 
-# Calculate percentiles
-for col in ["5y_Real", "carry_normalized", "momentum"]:
-    indicators[f"{col}_percentile"] = indicators[col].rolling(lookback).apply(lambda x: percentile_score(x))
+    # Final dataset
+    indicator_full = indicators[
+        ["5y", "5y_Real_percentile", "carry_normalized_percentile", "momentum_percentile"]].join(_5yUS_fut)
+    indicator_full.columns = ["5y_yield", "Value_Percentile", "Carry_Percentile", "Momentum_Percentile", "Open", "High",
+                              "Low", "Close"]
+    indicator_full.dropna(inplace=True)
 
-# Join with futures data
-indicator_full = indicators[["5y", "5y_Real_percentile", "carry_normalized_percentile", "momentum_percentile"]].join(
-    _5yUS_fut)
-indicator_full.columns = ["5y_yield", "Value_Percentile", "Carry_Percentile", "Momentum_Percentile", "Open", "High",
-                          "Low", "Close"]
-indicator_full.dropna(inplace=True)
+    st.success(
+        f"Training: {training_start_date.strftime('%Y-%m-%d')} to {start_date_input.strftime('%Y-%m-%d')} ({len(indicator_full[indicator_full.index < pd.to_datetime(start_date_input)])} days)")
+    st.success(
+        f"Trading: {start_date_input.strftime('%Y-%m-%d')} to {end_date_input.strftime('%Y-%m-%d')} ({len(indicator_full[(indicator_full.index >= pd.to_datetime(start_date_input)) & (indicator_full.index <= pd.to_datetime(end_date_input))])} days)")
 
-# Calculate technical indicators
-indicator_full['Fractal_Dim'] = compute_fractal_dimension(indicator_full['Close'], fractal_window)
-indicator_full['Hurst'] = indicator_full['Close'].rolling(window=hurst_window).apply(calculate_hurst, raw=False)
-indicator_full['RSI'] = calculate_rsi(indicator_full['Close'])
-indicator_full['Williams_R'] = calculate_williams_r(indicator_full['High'], indicator_full['Low'],
-                                                    indicator_full['Close'])
-indicator_full['CCI'] = calculate_cci(indicator_full['High'], indicator_full['Low'], indicator_full['Close'])
-indicator_full['Momentum_Score'] = indicator_full.apply(
-    lambda row: calculate_momentum_score(row['RSI'], row['Williams_R'], row['CCI']), axis=1
-)
+    # Grid Search or Single Run
+    if enable_grid_search:
+        with st.spinner(f"Running grid search optimization..."):
+            # Generate weight combinations
+            weight_combinations = []
+            for value_w in range(weight_step, 101, weight_step):
+                for carry_w in range(weight_step, 101 - value_w + weight_step, weight_step):
+                    momentum_w = 100 - value_w - carry_w
+                    if momentum_w >= weight_step:
+                        weight_combinations.append([value_w, carry_w, momentum_w])
 
+            # Split data for optimization
+            train_data = indicator_full[indicator_full.index < pd.to_datetime(start_date_input)]
 
-# ADF test
-def rolling_adf(series, window=hurst_window):
-    adf_stats = []
-    for i in range(len(series)):
-        if i < window:
-            adf_stats.append(np.nan)
-        else:
-            window_data = series.iloc[i - window:i + 1]
-            stat, _ = adf_test(window_data)
-            adf_stats.append(stat)
-    return pd.Series(adf_stats, index=series.index)
+            # Optimize on train data
+            results = []
+            progress_bar = st.progress(0)
 
+            for i, weights in enumerate(weight_combinations):
+                if i % 20 == 0:
+                    progress_bar.progress(i / len(weight_combinations))
 
-indicator_full['ADF_Stat'] = rolling_adf(indicator_full['Close'])
+                train_results = backtest_strategy_with_confirmations(
+                    train_data, weights, (buy_zone_min, buy_zone_max), (sell_zone_min, sell_zone_max),
+                    use_rsi_confirm, use_keltner_confirm, use_regime_confirm, regime_method,
+                    rsi_period, rsi_overbought, rsi_oversold, keltner_period, keltner_multiplier,
+                    hurst_window, transaction_cost_bps, capital_allocation_pct, initial_cash
+                )
 
-# Regime classification
-regime_results = []
-for idx, row in indicator_full.iterrows():
-    regime, confidence = classify_regime_advanced(
-        row['Hurst'], row['Fractal_Dim'], row['ADF_Stat'], row['Momentum_Score']
-    )
-    regime_results.append((regime, confidence))
+                train_results['weights'] = weights
+                results.append(train_results)
 
-indicator_full['Regime'] = [r[0] for r in regime_results]
-indicator_full['Regime_Confidence'] = [r[1] for r in regime_results]
+            progress_bar.progress(1.0)
 
-# Dynamic weight optimization by regime
-regime_weights = {
-    'TRENDING': [60, 15, 25],  # More momentum in trending
-    'MEAN_REVERTING': [75, 20, 5],  # More value in mean reverting
-    'UNKNOWN': [65, 25, 10]  # Balanced for unknown
-}
+            # Find optimal weights
+            if optimization_goal == "Max Return":
+                results.sort(key=lambda x: x['total_return_pct'], reverse=True)
+            else:
+                for r in results:
+                    r['return_dd_ratio'] = r['total_return_pct'] / max(r['max_drawdown'], 0.01)
+                results.sort(key=lambda x: x['return_dd_ratio'], reverse=True)
 
+            optimal_weights = results[0]['weights']
 
-# Calculate dynamic aggregate percentile
-def get_dynamic_agg_percentile(row):
-    regime = row['Regime']
-    weights = regime_weights.get(regime, [65, 25, 10])
-    return (row['Value_Percentile'] * weights[0] +
-            row['Carry_Percentile'] * weights[1] +
-            row['Momentum_Percentile'] * weights[2]) / 100
+            st.success(
+                f"🏆 Optimal Weights Found: Value:{optimal_weights[0]}% | Carry:{optimal_weights[1]}% | Momentum:{optimal_weights[2]}%")
 
+            # Display top results
+            st.subheader("🔍 Top 10 Optimization Results")
+            top_results = pd.DataFrame({
+                'Rank': range(1, 11),
+                'Value%': [r['weights'][0] for r in results[:10]],
+                'Carry%': [r['weights'][1] for r in results[:10]],
+                'Momentum%': [r['weights'][2] for r in results[:10]],
+                'Train Return%': [f"{r['total_return_pct']:.1f}" for r in results[:10]],
+                'Train MaxDD%': [f"{r['max_drawdown']:.1f}" for r in results[:10]],
+                'Train Trades': [r['num_trades'] for r in results[:10]]
+            })
+            st.dataframe(top_results, hide_index=True, use_container_width=True)
 
-indicator_full['Agg_Percentile_Dynamic'] = indicator_full.apply(get_dynamic_agg_percentile, axis=1)
+    else:
+        # Single run with manual weights
+        optimal_weights = [value_weight, carry_weight, momentum_weight]
 
-# Add current weights to dataframe for visualization
-for regime in regime_weights:
-    indicator_full[f'Weight_Value_{regime}'] = regime_weights[regime][0]
-    indicator_full[f'Weight_Carry_{regime}'] = regime_weights[regime][1]
-    indicator_full[f'Weight_Momentum_{regime}'] = regime_weights[regime][2]
+    # Test on trading period
+    trading_data = indicator_full[(indicator_full.index >= pd.to_datetime(start_date_input)) &
+                                  (indicator_full.index <= pd.to_datetime(end_date_input))]
 
-# Current weights based on regime
-indicator_full['Current_Weight_Value'] = indicator_full.apply(
-    lambda row: regime_weights.get(row['Regime'], [65, 25, 10])[0], axis=1)
-indicator_full['Current_Weight_Carry'] = indicator_full.apply(
-    lambda row: regime_weights.get(row['Regime'], [65, 25, 10])[1], axis=1)
-indicator_full['Current_Weight_Momentum'] = indicator_full.apply(
-    lambda row: regime_weights.get(row['Regime'], [65, 25, 10])[2], axis=1)
-
-# Initialize advanced trading system
-trading_system = AdvancedTradingSystem(initial_cash, transaction_fee_bps, capital_allocation_pct)
-
-# Process all signals
-all_signals = []
-executed_trades = []
-
-for idx, row in indicator_full.iterrows():
-    # Check signal strength
-    signal_type, signal_strength = trading_system.check_signal_strength(
-        row['Agg_Percentile_Dynamic'], buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max
+    full_results = backtest_strategy_with_confirmations(
+        trading_data, optimal_weights, (buy_zone_min, buy_zone_max), (sell_zone_min, sell_zone_max),
+        use_rsi_confirm, use_keltner_confirm, use_regime_confirm, regime_method,
+        rsi_period, rsi_overbought, rsi_oversold, keltner_period, keltner_multiplier,
+        hurst_window, transaction_cost_bps, capital_allocation_pct, initial_cash
     )
 
-    # Check if we can trade
-    can_trade, action_type = trading_system.can_trade(
-        signal_type, signal_strength, row['Close'], row['Regime']
-    )
+    # Display Results
+    st.markdown("---")
+    st.subheader(
+        f"📊 Strategy Performance: Value:{optimal_weights[0]}% | Carry:{optimal_weights[1]}% | Momentum:{optimal_weights[2]}%")
 
-    # Execute trade if possible and confidence is high enough
-    executed = False
-    if can_trade and row['Regime_Confidence'] >= confidence_threshold:
-        trade_info = trading_system.execute_trade(action_type, row['Close'], idx, signal_strength)
-        executed_trades.append(trade_info)
-        executed = True
+    # Performance Metrics
+    col1, col2, col3, col4, col5 = st.columns(5)
 
-    # Update unrealized P&L
-    trading_system.update_unrealized_pnl(row['Close'])
+    with col1:
+        st.metric("Total Return", f"{full_results['total_return_pct']:.1f}%")
+    with col2:
+        st.metric("Total P&L", f"${full_results['total_pnl']:,.0f}")
+    with col3:
+        st.metric("Max Drawdown", f"{full_results['max_drawdown']:.1f}%")
+    with col4:
+        st.metric("Number of Trades", full_results['num_trades'])
+    with col5:
+        st.metric("Win Rate", f"{full_results['win_rate']:.1f}%")
 
-    all_signals.append({
-        'signal': 1 if signal_type == "BUY" else -1 if signal_type == "SELL" else 0,
-        'executed': executed,
-        'total_pnl': trading_system.get_total_pnl(),
-        'realized_pnl': trading_system.realized_pnl,
-        'unrealized_pnl': trading_system.unrealized_pnl,
-        'cash': trading_system.cash,
-        'position': trading_system.position,
-        'capital_utilization': trading_system.get_capital_utilization()
-    })
+    # Data with signals
+    data_with_signals = full_results['data_with_signals']
 
-# Add signals to dataframe
-for key in ['signal', 'executed', 'total_pnl', 'realized_pnl', 'unrealized_pnl', 'cash', 'position',
-            'capital_utilization']:
-    indicator_full[key] = [s[key] for s in all_signals]
+    # Charts Section
+    col1, col2 = st.columns([3, 1])
 
-# Filter display data
-display_data = indicator_full[
-    (indicator_full.index >= start_date_input.strftime('%Y-%m-%d')) &
-    (indicator_full.index <= end_date_input.strftime('%Y-%m-%d'))
-    ]
+    with col2:
+        st.markdown("**📊 Chart Display Options**")
+        show_hurst = st.checkbox("Show Hurst Exponent", value=True)
+        if regime_method == "ADF Test":
+            show_adf = st.checkbox("Show ADF Statistic", value=True)
 
-# Performance calculations
-total_pnl = trading_system.get_total_pnl()
-total_return_pct = (total_pnl / initial_cash) * 100
-portfolio_value = trading_system.get_portfolio_value()
-current_capital_utilization = trading_system.get_capital_utilization()
+        st.markdown("**Component Indicators:**")
+        show_value = st.checkbox("Show Value Percentile", value=False)
+        show_carry = st.checkbox("Show Carry Percentile", value=False)
+        show_momentum = st.checkbox("Show Momentum Percentile", value=False)
 
-# Professional Dashboard
-st.markdown("---")
+    with col1:
+        st.subheader("📈 Price with Trading Signals")
+        fig1 = go.Figure()
 
-# Advanced Key Metrics Dashboard
-col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+        # Price line
+        fig1.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Close"],
+                                  mode="lines", name="5Y Futures Price", line=dict(color='black', width=2)))
 
-with col1:
-    st.metric("💰 Portfolio Value", f"${portfolio_value:,.0f}",
-              delta=f"${total_pnl:,.0f} ({total_return_pct:+.2f}%)")
+        # Buy signals
+        executed_buys = data_with_signals[(data_with_signals['Signal'] == 1) & (data_with_signals['Executed'] == True)]
+        if len(executed_buys) > 0:
+            fig1.add_trace(go.Scatter(x=executed_buys.index, y=executed_buys["Close"],
+                                      mode="markers", name="Buy Executed",
+                                      marker=dict(symbol="triangle-up", color="green", size=12)))
 
-with col2:
-    st.metric("💵 Available Cash", f"${trading_system.cash:,.0f}",
-              delta=f"Initial: ${initial_cash:,.0f}")
+        # Sell signals
+        executed_sells = data_with_signals[
+            (data_with_signals['Signal'] == -1) & (data_with_signals['Executed'] == True)]
+        if len(executed_sells) > 0:
+            fig1.add_trace(go.Scatter(x=executed_sells.index, y=executed_sells["Close"],
+                                      mode="markers", name="Sell Executed",
+                                      marker=dict(symbol="triangle-down", color="red", size=12)))
 
-with col3:
-    realized_pct = (trading_system.realized_pnl / initial_cash) * 100
-    st.metric("✅ Realized P&L", f"${trading_system.realized_pnl:,.0f}",
-              delta=f"{realized_pct:+.2f}%")
+        # Add Keltner Channels if enabled
+        if use_keltner_confirm:
+            fig1.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Keltner_Upper"],
+                                      mode="lines", name="Keltner Upper", line=dict(color='orange', dash='dash')))
+            fig1.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Keltner_Lower"],
+                                      mode="lines", name="Keltner Lower", line=dict(color='orange', dash='dash')))
 
-with col4:
-    unrealized_pct = (trading_system.unrealized_pnl / initial_cash) * 100
-    st.metric("📊 Unrealized P&L", f"${trading_system.unrealized_pnl:,.0f}",
-              delta=f"{unrealized_pct:+.2f}%")
+        fig1.update_layout(height=400, title="Trading Signals on 5Y Treasury Futures")
+        st.plotly_chart(fig1, use_container_width=True)
 
-with col5:
-    current_pos = "LONG" if trading_system.position > 0 else "SHORT" if trading_system.position < 0 else "FLAT"
-    pos_size = abs(trading_system.position)
-    st.metric("📈 Position", current_pos, delta=f"Size: {pos_size}")
-
-with col6:
-    st.metric("⚡ Capital Usage", f"{current_capital_utilization:.1f}%",
-              delta=f"Allocation: {capital_allocation_pct}%")
-
-with col7:
-    total_trades = len(executed_trades)
-    total_fees = sum([trade['cost'] for trade in executed_trades])
-    st.metric("🔄 Trades", total_trades, delta=f"Fees: ${total_fees:.0f}")
-
-# Enhanced Professional Charts Section
-st.markdown("---")
-
-# Chart 1: Price Action with Professional Signals
-st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-st.subheader("📈 Treasury Futures with Professional Trading Signals")
-fig1 = go.Figure()
-
-# Price line with enhanced styling
-fig1.add_trace(go.Scatter(x=display_data.index, y=display_data["Close"],
-                          mode="lines", name="5Y Treasury Futures",
-                          line=dict(color='#2E86AB', width=3)))
-
-# All buy signals (light triangles)
-buy_signals_all = display_data[display_data["signal"] == 1]
-if len(buy_signals_all) > 0:
-    fig1.add_trace(go.Scatter(x=buy_signals_all.index, y=buy_signals_all["Close"],
-                              mode="markers", name=f"Buy Signals ({len(buy_signals_all)})",
-                              marker=dict(symbol="triangle-up", color="rgba(34, 139, 34, 0.6)", size=10),
-                              showlegend=True))
-
-# Executed buy signals (dark squares)
-buy_executed = display_data[(display_data["signal"] == 1) & (display_data["executed"] == True)]
-if len(buy_executed) > 0:
-    fig1.add_trace(go.Scatter(x=buy_executed.index, y=buy_executed["Close"],
-                              mode="markers", name=f"✅ Buy Executed ({len(buy_executed)})",
-                              marker=dict(symbol="square", color="#228B22", size=14),
-                              showlegend=True))
-
-# All sell signals (light triangles)
-sell_signals_all = display_data[display_data["signal"] == -1]
-if len(sell_signals_all) > 0:
-    fig1.add_trace(go.Scatter(x=sell_signals_all.index, y=sell_signals_all["Close"],
-                              mode="markers", name=f"Sell Signals ({len(sell_signals_all)})",
-                              marker=dict(symbol="triangle-down", color="rgba(220, 20, 60, 0.6)", size=10),
-                              showlegend=True))
-
-# Executed sell signals (dark squares)
-sell_executed = display_data[(display_data["signal"] == -1) & (display_data["executed"] == True)]
-if len(sell_executed) > 0:
-    fig1.add_trace(go.Scatter(x=sell_executed.index, y=sell_executed["Close"],
-                              mode="markers", name=f"❌ Sell Executed ({len(sell_executed)})",
-                              marker=dict(symbol="square", color="#DC143C", size=14),
-                              showlegend=True))
-
-fig1.update_layout(height=450, title="Professional Trading Signals Analysis",
-                   template="plotly_white", showlegend=True,
-                   legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-st.plotly_chart(fig1, use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Chart 2: Enhanced Signal Analysis with Options
-st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-col1, col2 = st.columns([3, 1])
-
-with col2:
-    st.markdown("**📊 Chart Options**")
-    show_yield = st.checkbox("Show 5Y Yield", value=True)
-    st.markdown("**Component Indicators:**")
-    show_value = st.checkbox("Show Value %ile", value=False)
-    show_carry = st.checkbox("Show Carry %ile", value=False)
-    show_momentum_pct = st.checkbox("Show Momentum %ile", value=False)
-
-with col1:
-    st.subheader("🎯 Dynamic Aggregate Percentile & Components")
+    # Aggregate Percentile Chart with Components
+    st.subheader("📊 Aggregate Percentile & Components with RSI")
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
 
-    # Dynamic aggregate percentile (always shown)
-    fig2.add_trace(go.Scatter(x=display_data.index, y=display_data["Agg_Percentile_Dynamic"],
-                              mode="lines", name="Dynamic Agg %ile",
-                              line=dict(color='#6A4C93', width=4)), secondary_y=False)
+    # Aggregate percentile
+    fig2.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Agg_Percentile"],
+                              mode="lines", name="Agg Percentile", line=dict(color='purple', width=3)),
+                   secondary_y=False)
 
-    # Optional 5Y Yield
-    if show_yield:
-        fig2.add_trace(go.Scatter(x=display_data.index, y=display_data["5y_yield"],
-                                  mode="lines", name="5Y Yield",
-                                  line=dict(color='#F39C12', width=2)), secondary_y=True)
-
-    # Optional component indicators (scaled to 0-100 range)
+    # Component percentiles if enabled
     if show_value:
-        fig2.add_trace(go.Scatter(x=display_data.index, y=display_data["Value_Percentile"],
-                                  mode="lines", name="Value %ile",
-                                  line=dict(color='#E74C3C', width=2, dash='dot')), secondary_y=False)
+        fig2.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Value_Percentile"],
+                                  mode="lines", name="Value %ile", line=dict(color='red', width=1, dash='dot')),
+                       secondary_y=False)
 
     if show_carry:
-        fig2.add_trace(go.Scatter(x=display_data.index, y=display_data["Carry_Percentile"],
-                                  mode="lines", name="Carry %ile",
-                                  line=dict(color='#3498DB', width=2, dash='dash')), secondary_y=False)
+        fig2.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Carry_Percentile"],
+                                  mode="lines", name="Carry %ile", line=dict(color='blue', width=1, dash='dash')),
+                       secondary_y=False)
 
-    if show_momentum_pct:
-        fig2.add_trace(go.Scatter(x=display_data.index, y=display_data["Momentum_Percentile"],
+    if show_momentum:
+        fig2.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Momentum_Percentile"],
                                   mode="lines", name="Momentum %ile",
-                                  line=dict(color='#2ECC71', width=2, dash='dashdot')), secondary_y=False)
+                                  line=dict(color='green', width=1, dash='dashdot')), secondary_y=False)
+
+    # RSI if enabled
+    if use_rsi_confirm:
+        fig2.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["RSI"],
+                                  mode="lines", name="RSI", line=dict(color='blue', width=1)), secondary_y=True)
+        fig2.add_hline(y=rsi_overbought, line_dash="dash", line_color="red", secondary_y=True)
+        fig2.add_hline(y=rsi_oversold, line_dash="dash", line_color="green", secondary_y=True)
 
     # Trading zones
-    fig2.add_shape(type="rect", x0=display_data.index[0], x1=display_data.index[-1],
-                   y0=buy_zone_min, y1=buy_zone_max, fillcolor="rgba(34, 139, 34, 0.1)",
-                   layer="below", line_width=0)
-    fig2.add_hline(y=(buy_zone_min + buy_zone_max) / 2, line_dash="dash", line_color="#228B22",
-                   annotation_text=f"Buy Zone: {buy_zone_min}-{buy_zone_max}%")
-
-    fig2.add_shape(type="rect", x0=display_data.index[0], x1=display_data.index[-1],
-                   y0=sell_zone_min, y1=sell_zone_max, fillcolor="rgba(220, 20, 60, 0.1)",
-                   layer="below", line_width=0)
-    fig2.add_hline(y=(sell_zone_min + sell_zone_max) / 2, line_dash="dash", line_color="#DC143C",
-                   annotation_text=f"Sell Zone: {sell_zone_min}-{sell_zone_max}%")
+    fig2.add_hrect(y0=buy_zone_min, y1=buy_zone_max, fillcolor="rgba(0, 255, 0, 0.1)", layer="below", secondary_y=False)
+    fig2.add_hrect(y0=sell_zone_min, y1=sell_zone_max, fillcolor="rgba(255, 0, 0, 0.1)", layer="below",
+                   secondary_y=False)
 
     fig2.update_yaxes(title_text="Percentile (%)", secondary_y=False, range=[0, 100])
-    if show_yield:
-        fig2.update_yaxes(title_text="5Y Yield (%)", secondary_y=True)
+    if use_rsi_confirm:
+        fig2.update_yaxes(title_text="RSI", secondary_y=True, range=[0, 100])
 
-    fig2.update_layout(height=450, title="Signal Analysis Dashboard", template="plotly_white",
-                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig2.update_layout(height=450, title="Signal Analysis Dashboard")
     st.plotly_chart(fig2, use_container_width=True)
 
-st.markdown('</div>', unsafe_allow_html=True)
+    # Regime Indicators Chart
+    if show_hurst or (regime_method == "ADF Test" and show_adf):
+        st.subheader(f"🔄 Regime Analysis - {regime_method}")
+        fig3 = go.Figure()
 
-# Chart 3: Dynamic Weights Visualization
-st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-col1, col2 = st.columns([3, 1])
+        if show_hurst:
+            fig3.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["Hurst"],
+                                      mode="lines", name="Hurst Exponent", line=dict(color='purple', width=2)))
+            fig3.add_hline(y=0.5, line_dash="dot", line_color="gray", annotation_text="Random Walk (0.5)")
+            fig3.add_hline(y=0.53, line_dash="dash", line_color="green", annotation_text="Trending (>0.53)")
+            fig3.add_hline(y=0.47, line_dash="dash", line_color="red", annotation_text="Mean Reverting (<0.47)")
 
-with col2:
-    st.markdown("**⚖️ Weight Display**")
-    show_value_weight = st.checkbox("Value Weight", value=True)
-    show_carry_weight = st.checkbox("Carry Weight", value=True)
-    show_momentum_weight = st.checkbox("Momentum Weight", value=True)
+        if regime_method == "ADF Test" and show_adf:
+            fig3.add_trace(go.Scatter(x=data_with_signals.index, y=data_with_signals["ADF_Stat"],
+                                      mode="lines", name="ADF Statistic", line=dict(color='orange', width=2)))
+            fig3.add_hline(y=-2.567, line_dash="dash", line_color="orange", annotation_text="Moderate MR (-2.567)")
+            fig3.add_hline(y=-2.862, line_dash="dash", line_color="red", annotation_text="Strong MR (-2.862)")
 
-with col1:
-    st.subheader("⚖️ Dynamic Weight Allocation by Regime")
-    fig3 = go.Figure()
+        fig3.update_layout(height=300, title=f"{regime_method} Analysis")
+        st.plotly_chart(fig3, use_container_width=True)
 
-    if show_value_weight:
-        fig3.add_trace(go.Scatter(x=display_data.index, y=display_data["Current_Weight_Value"],
-                                  mode="lines", name="Value Weight (%)",
-                                  line=dict(color='#E74C3C', width=3), fill='tonexty'))
+    # Regime Analysis Summary
+    st.subheader("🔄 Market Regime Analysis Summary")
+    regime_summary = data_with_signals.groupby('Regime').agg({
+        'Regime': 'count',
+        'Signal': lambda x: (x != 0).sum(),
+        'Executed': 'sum'
+    }).round(2)
+    regime_summary.columns = ['Days', 'Signals Generated', 'Signals Executed']
+    st.dataframe(regime_summary, use_container_width=True)
 
-    if show_carry_weight:
-        fig3.add_trace(go.Scatter(x=display_data.index, y=display_data["Current_Weight_Carry"],
-                                  mode="lines", name="Carry Weight (%)",
-                                  line=dict(color='#3498DB', width=3), fill='tonexty'))
+    # Trade Log
+    if full_results['trades']:
+        st.subheader("📋 Trade History")
+        trades_df = pd.DataFrame(full_results['trades'])
+        trades_df['entry_date'] = pd.to_datetime(trades_df['entry_date']).dt.strftime('%Y-%m-%d')
+        trades_df['exit_date'] = pd.to_datetime(trades_df['exit_date']).dt.strftime('%Y-%m-%d')
+        trades_df['pnl'] = trades_df['pnl'].round(0).astype(int)
+        trades_df['return_pct'] = trades_df['return_pct'].round(2)
 
-    if show_momentum_weight:
-        fig3.add_trace(go.Scatter(x=display_data.index, y=display_data["Current_Weight_Momentum"],
-                                  mode="lines", name="Momentum Weight (%)",
-                                  line=dict(color='#2ECC71', width=3), fill='tonexty'))
 
-    fig3.update_layout(height=400, title="Dynamic Component Weights Evolution",
-                       template="plotly_white", yaxis_title="Weight (%)",
-                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-    st.plotly_chart(fig3, use_container_width=True)
+        # Style profitable trades
+        def color_pnl(val):
+            return 'color: green' if val > 0 else 'color: red'
 
-st.markdown('</div>', unsafe_allow_html=True)
 
-# Current Status Dashboard
-col1, col2 = st.columns(2)
+        styled_trades = trades_df.style.applymap(color_pnl, subset=['pnl', 'return_pct'])
+        st.dataframe(styled_trades, hide_index=True, use_container_width=True)
 
-with col1:
-    st.subheader("📋 Current Market Status")
-    if not display_data.empty:
-        latest = display_data.iloc[-1]
+    # Current Status
+    st.subheader("📈 Current Market Status")
+    if not data_with_signals.empty:
+        latest = data_with_signals.iloc[-1]
 
-        status_table = pd.DataFrame({
-            "Metric": ["Value Percentile", "Carry Percentile", "Momentum Percentile",
-                       "🎯 Dynamic Agg %ile", "Enhanced Momentum Score", "Market Regime", "Regime Confidence"],
-            "Current Value": [f"{latest['Value_Percentile']:.1f}%", f"{latest['Carry_Percentile']:.1f}%",
-                              f"{latest['Momentum_Percentile']:.1f}%", f"{latest['Agg_Percentile_Dynamic']:.1f}%",
-                              f"{latest['Momentum_Score']:.0f}/3", latest['Regime'],
-                              f"{latest['Regime_Confidence']:.2f}"],
-            "Weight": [f"{latest['Current_Weight_Value']:.0f}%", f"{latest['Current_Weight_Carry']:.0f}%",
-                       f"{latest['Current_Weight_Momentum']:.0f}%", "100%", "Indicator", "Classification", "Meta"]
-        })
-        st.dataframe(status_table, hide_index=True, use_container_width=True)
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Current Agg %ile", f"{latest['Agg_Percentile']:.1f}%")
+            st.metric("Value %ile", f"{latest['Value_Percentile']:.1f}%")
 
-with col2:
-    st.subheader("🔬 Technical Analysis Dashboard")
-    if not display_data.empty:
-        latest = display_data.iloc[-1]
+        with col2:
+            st.metric("Carry %ile", f"{latest['Carry_Percentile']:.1f}%")
+            st.metric("Momentum %ile", f"{latest['Momentum_Percentile']:.1f}%")
 
-        tech_table = pd.DataFrame({
-            "Indicator": ["Hurst Exponent", "Fractal Dimension", "ADF Statistic",
-                          "RSI (14)", "Williams %R (14)", "CCI (20)"],
-            "Value": [f"{latest['Hurst']:.3f}", f"{latest['Fractal_Dim']:.3f}",
-                      f"{latest['ADF_Stat']:.2f}", f"{latest['RSI']:.1f}",
-                      f"{latest['Williams_R']:.1f}", f"{latest['CCI']:.1f}"],
-            "Signal": [
-                "🟢 Trending" if latest['Hurst'] > 0.53 else "🔴 Mean-Rev" if latest['Hurst'] < 0.47 else "🟡 Neutral",
-                "🔴 Ranging" if latest['Fractal_Dim'] > 1.53 else "🟢 Trending" if latest[
-                                                                                     'Fractal_Dim'] < 1.47 else "🟡 Mixed",
-                "🟢 Mean-Rev" if latest['ADF_Stat'] < -2.862 else "🟡 Weak" if latest[
-                                                                                 'ADF_Stat'] < -2.567 else "🔴 Random",
-                "🔴 Overbought" if latest['RSI'] > 70 else "🟢 Oversold" if latest['RSI'] < 30 else "🟡 Neutral",
-                "🔴 Overbought" if latest['Williams_R'] > -20 else "🟢 Oversold" if latest[
-                                                                                      'Williams_R'] < -80 else "🟡 Neutral",
-                "🔴 Overbought" if latest['CCI'] > 100 else "🟢 Oversold" if latest['CCI'] < -100 else "🟡 Neutral"
-            ]
-        })
-        st.dataframe(tech_table, hide_index=True, use_container_width=True)
+        with col3:
+            if use_rsi_confirm:
+                st.metric("Current RSI", f"{latest['RSI']:.1f}")
+                rsi_signal = "Overbought" if latest['RSI'] > rsi_overbought else "Oversold" if latest[
+                                                                                                   'RSI'] < rsi_oversold else "Neutral"
+                st.metric("RSI Signal", rsi_signal)
+            else:
+                st.metric("Current Regime", latest['Regime'])
+                st.metric("Hurst Exponent", f"{latest['Hurst']:.3f}")
 
-# Advanced Portfolio Performance Analysis
-st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-st.subheader("💹 Advanced Portfolio Performance Analysis")
-fig_perf = go.Figure()
+        with col4:
+            confidence = latest['Regime_Confidence']
+            st.metric("Regime Confidence", f"{confidence:.2f}")
+            if regime_method == "ADF Test":
+                st.metric("ADF Stat", f"{latest['ADF_Stat']:.2f}")
 
-# Total P&L with enhanced styling
-fig_perf.add_trace(go.Scatter(x=display_data.index,
-                              y=(display_data['total_pnl'] / initial_cash) * 100,
-                              mode='lines+markers', name='Total P&L (%)',
-                              line=dict(color='#1B4F72', width=4),
-                              marker=dict(size=3)))
-
-# Realized P&L
-fig_perf.add_trace(go.Scatter(x=display_data.index,
-                              y=(display_data['realized_pnl'] / initial_cash) * 100,
-                              mode='lines', name='✅ Realized P&L (%)',
-                              line=dict(color='#27AE60', width=3, dash='dot')))
-
-# Unrealized P&L
-fig_perf.add_trace(go.Scatter(x=display_data.index,
-                              y=(display_data['unrealized_pnl'] / initial_cash) * 100,
-                              mode='lines', name='📊 Unrealized P&L (%)',
-                              line=dict(color='#F39C12', width=2, dash='dash')))
-
-# Benchmark (Buy & Hold)
-buy_hold_return = ((display_data['Close'] / display_data['Close'].iloc[0]) - 1) * 100
-fig_perf.add_trace(go.Scatter(x=display_data.index, y=buy_hold_return,
-                              mode='lines', name='📈 Buy & Hold Benchmark (%)',
-                              line=dict(color='#95A5A6', width=2, dash='longdash')))
-
-# Capital Utilization
-fig_perf.add_trace(go.Scatter(x=display_data.index, y=display_data['capital_utilization'],
-                              mode='lines', name='⚡ Capital Utilization (%)',
-                              line=dict(color='#8E44AD', width=2, dash='dashdot')))
-
-fig_perf.update_layout(height=450,
-                       title=f"Portfolio Performance: {total_return_pct:.2f}% vs B&H: {buy_hold_return.iloc[-1]:.2f}% | Max Capital Usage: {display_data['capital_utilization'].max():.1f}%",
-                       yaxis_title="Return/Utilization (%)", template="plotly_white",
-                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-st.plotly_chart(fig_perf, use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Professional Trading Activity Analysis
-if executed_trades:
-    st.subheader("📊 Professional Trading Activity Analysis")
-
-    trades_df = pd.DataFrame(executed_trades)
-    trades_df['date'] = pd.to_datetime(trades_df['date'])
-    trades_df = trades_df.sort_values('date', ascending=False)
-
+    # Export Configuration
+    st.subheader("📁 Export Results")
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**📈 Recent Trading Activity (Last 10)**")
-        recent_trades = trades_df.head(10)[['date', 'action', 'price', 'quantity', 'pnl', 'cost']].copy()
-        recent_trades['date'] = recent_trades['date'].dt.strftime('%Y-%m-%d')
-        recent_trades['pnl'] = recent_trades['pnl'].fillna(0).round(2)
-        recent_trades['cost'] = recent_trades['cost'].round(2)
-        recent_trades['quantity'] = recent_trades['quantity'].astype(int)
-        st.dataframe(recent_trades, hide_index=True, use_container_width=True)
+        config = {
+            'optimal_weights': optimal_weights,
+            'performance': {
+                'total_return_pct': full_results['total_return_pct'],
+                'max_drawdown': full_results['max_drawdown'],
+                'num_trades': full_results['num_trades'],
+                'win_rate': full_results['win_rate']
+            },
+            'periods': {
+                'training_start': training_start_date.strftime('%Y-%m-%d'),
+                'trading_start': start_date_input.strftime('%Y-%m-%d'),
+                'trading_end': end_date_input.strftime('%Y-%m-%d')
+            },
+            'settings': {
+                'buy_zone': [buy_zone_min, buy_zone_max],
+                'sell_zone': [sell_zone_min, sell_zone_max],
+                'use_rsi_confirm': use_rsi_confirm,
+                'use_keltner_confirm': use_keltner_confirm,
+                'use_regime_confirm': use_regime_confirm,
+                'regime_method': regime_method,
+                'rsi_settings': [rsi_period, rsi_overbought, rsi_oversold],
+                'keltner_settings': [keltner_period, keltner_multiplier]
+            }
+        }
+
+        st.download_button("📥 Download Configuration",
+                           json.dumps(config, indent=2, default=str),
+                           f"trading_config_{datetime.now().strftime('%Y%m%d')}.json")
 
     with col2:
-        st.markdown("**📊 Advanced Trading Statistics**")
-        profitable_trades = trades_df[trades_df['pnl'] > 0]['pnl'].count() if 'pnl' in trades_df.columns else 0
-        total_completed_trades = trades_df[trades_df['pnl'].notna()]['pnl'].count() if 'pnl' in trades_df.columns else 0
-        win_rate = (profitable_trades / total_completed_trades * 100) if total_completed_trades > 0 else 0
-        avg_trade = trades_df[trades_df['pnl'].notna()]['pnl'].mean() if 'pnl' in trades_df.columns else 0
-        total_fees = trades_df['cost'].sum()
-        avg_position_size = trades_df['quantity'].mean()
+        if full_results['trades']:
+            trades_csv = pd.DataFrame(full_results['trades']).to_csv(index=False)
+            st.download_button("📥 Download Trade History", trades_csv,
+                               f"trade_history_{datetime.now().strftime('%Y%m%d')}.csv")
 
-        stats_df = pd.DataFrame({
-            "Metric": ["Total Executions", "Completed Trades", "Win Rate", "Avg Trade P&L", "Total Fees",
-                       "Avg Position Size"],
-            "Value": [len(trades_df), total_completed_trades, f"{win_rate:.1f}%", f"${avg_trade:.2f}",
-                      f"${total_fees:.2f}", f"{avg_position_size:.0f} contracts"]
-        })
-        st.dataframe(stats_df, hide_index=True, use_container_width=True)
-
-# Professional Trading Alert System
+# Footer
 st.markdown("---")
-if not display_data.empty:
-    latest = display_data.iloc[-1]
-    latest_regime = latest['Regime']
-    latest_confidence = latest['Regime_Confidence']
-    latest_agg = latest['Agg_Percentile_Dynamic']
-
-    # Signal analysis
-    signal_type, signal_strength = trading_system.check_signal_strength(
-        latest_agg, buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max
-    )
-
-    position_status = "🟢 LONG" if trading_system.position > 0 else "🔴 SHORT" if trading_system.position < 0 else "⚪ FLAT"
-
-    # Advanced professional alert
-    if signal_type == "BUY" and latest_confidence >= confidence_threshold:
-        st.success(
-            f"🚀 **STRONG BUY SIGNAL DETECTED** | {position_status} | {latest_regime} Regime | Signal: {latest_agg:.1f}% | Strength: {signal_strength:.2f} | Confidence: {latest_confidence:.2f} | Capital: {capital_allocation_pct}%")
-    elif signal_type == "SELL" and latest_confidence >= confidence_threshold:
-        st.error(
-            f"📉 **STRONG SELL SIGNAL DETECTED** | {position_status} | {latest_regime} Regime | Signal: {latest_agg:.1f}% | Strength: {signal_strength:.2f} | Confidence: {latest_confidence:.2f} | Capital: {capital_allocation_pct}%")
-    elif latest_confidence < confidence_threshold:
-        st.warning(
-            f"⚠️ **LOW CONFIDENCE REGIME** | {position_status} | {latest_regime} | No Trading Recommended | Confidence: {latest_confidence:.2f} | Market Uncertain")
-    else:
-        st.info(
-            f"💡 **MARKET MONITORING MODE** | {position_status} | {latest_regime} Regime | Signal: {latest_agg:.1f}% | Strength: {signal_strength:.2f} | Confidence: {latest_confidence:.2f}")
-
-# Advanced Summary Statistics
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("📊 Total Executions", len(executed_trades))
-with col2:
-    max_dd = min((display_data['total_pnl'] / initial_cash) * 100) if len(display_data) > 0 else 0
-    st.metric("📉 Max Drawdown", f"{max_dd:.2f}%")
-with col3:
-    if len(display_data) > 1:
-        daily_returns = display_data['total_pnl'].pct_change().dropna()
-        if len(daily_returns) > 0 and daily_returns.std() > 0:
-            sharpe_ratio = (daily_returns.mean() / daily_returns.std()) * np.sqrt(252)
-        else:
-            sharpe_ratio = 0
-    else:
-        sharpe_ratio = 0
-    st.metric("📈 Sharpe Ratio", f"{sharpe_ratio:.2f}")
-with col4:
-    max_capital_usage = display_data['capital_utilization'].max() if len(display_data) > 0 else 0
-    st.metric("⚡ Max Capital Usage", f"{max_capital_usage:.1f}%")
-
-# Professional Data Export Section
-col1, col2, col3 = st.columns(3)
-with col1:
-    csv_data = display_data.to_csv(index=True)
-    st.download_button("📥 Download Market Data", csv_data,
-                       f"treasury_trading_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
-
-with col2:
-    if executed_trades:
-        trades_csv = pd.DataFrame(executed_trades).to_csv(index=False)
-        st.download_button("📥 Download Trade History", trades_csv,
-                           f"trade_history_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
-
-with col3:
-    portfolio_summary = pd.DataFrame({
-        "Metric": ["Initial Capital", "Current Cash", "Realized P&L", "Unrealized P&L", "Total P&L",
-                   "Portfolio Value", "Total Return %", "Capital Allocation %", "Max Capital Usage %"],
-        "Value": [initial_cash, trading_system.cash, trading_system.realized_pnl,
-                  trading_system.unrealized_pnl, total_pnl, portfolio_value, total_return_pct,
-                  capital_allocation_pct, max_capital_usage]
-    })
-    summary_csv = portfolio_summary.to_csv(index=False)
-    st.download_button("📥 Download Portfolio Summary", summary_csv,
-                       f"portfolio_summary_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
+st.markdown(f"""
+<div style='text-align: center; color: #666; padding: 1rem;'>
+    <strong>Professional Treasury Trading System v3.0</strong><br>
+    <em>Enhanced with Grid Search, RSI & Keltner Confirmations, Flexible Regime Analysis</em><br>
+    <small>Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</small>
+</div>
+""", unsafe_allow_html=True)
