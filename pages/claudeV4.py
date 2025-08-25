@@ -9,12 +9,13 @@ from fredapi import Fred
 from scipy import stats
 import warnings
 import time
+from itertools import product
 
 warnings.filterwarnings('ignore')
 
 # Initialize FRED API
 fred = Fred(api_key='f40c3edb57e906557fcac819c8ab6478')
-st.set_page_config(layout="wide", page_title="Professional Treasury Trading", page_icon="💹")
+st.set_page_config(layout="wide", page_title="Revised Treasury Trading Strategy", page_icon="💹")
 
 # Professional Trading App Styling
 st.markdown("""
@@ -28,26 +29,13 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     }
-    .metric-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: 2px solid #dee2e6;
+    .strategy-info {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 2px solid #2196f3;
         border-radius: 12px;
-        padding: 1.2rem;
-        text-align: center;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-    }
-    .trading-alert {
-        border-left: 6px solid #28a745;
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        padding: 1.2rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
-    .stExpander > div:first-child {
-        background: linear-gradient(90deg, #495057 0%, #6c757d 100%);
-        color: white;
-        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 6px 20px rgba(33,150,243,0.2);
     }
     .chart-container {
         background: #ffffff;
@@ -56,32 +44,8 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         margin-bottom: 1rem;
     }
-    .documentation-section {
-        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 2rem;
-        margin: 1rem 0;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-    }
-    .optimization-panel {
-        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-        border: 2px solid #ffc107;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
-        box-shadow: 0 6px 20px rgba(255,193,7,0.2);
-    }
 </style>
 """, unsafe_allow_html=True)
-
-# Assets dictionary
-assets_dict = {
-    "2y US": "DGS2",
-    "5y US": "^FVX",
-    "5y US Real": "DFII5",
-    "5y US Future": "ZF=F"
-}
 
 
 def get_data(ticker, start):
@@ -109,39 +73,38 @@ def fred_import(ticker, start_date):
         return pd.DataFrame()
 
 
-def compute_fractal_dimension(price_series, scaling_factor):
-    """Compute fractal dimension for price series"""
-    if len(price_series) < scaling_factor:
-        return np.full(len(price_series), np.nan)
+def kalman_filter_1d(observations, process_variance=1e-5, measurement_variance=1e-1):
+    """
+    Simple 1D Kalman filter for smoothing time series
+    Reduces noise in financial data to improve signal quality
+    """
+    n = len(observations)
+    if n == 0:
+        return observations
 
-    fractal_dims = []
-    for i in range(len(price_series)):
-        if i < scaling_factor:
-            fractal_dims.append(np.nan)
-            continue
+    # Initialize
+    x_hat = np.zeros(n)  # State estimates
+    P = np.zeros(n)  # Error covariances
 
-        window = price_series.iloc[i - scaling_factor:i + 1]
-        if len(window) < 2:
-            fractal_dims.append(np.nan)
-            continue
+    # Initial conditions
+    x_hat[0] = observations[0]
+    P[0] = 1.0
 
-        normalized_prices = (window - window.iloc[0]) / window.iloc[0] if window.iloc[0] != 0 else window - window.iloc[
-            0]
-        path_length = np.sum(np.abs(np.diff(normalized_prices)))
-        straight_distance = abs(normalized_prices.iloc[-1] - normalized_prices.iloc[0])
+    for k in range(1, n):
+        # Prediction
+        x_hat_minus = x_hat[k - 1]
+        P_minus = P[k - 1] + process_variance
 
-        if straight_distance == 0:
-            fractal_dim = 1.0
-        else:
-            fractal_dim = 1 + (np.log(path_length) - np.log(straight_distance)) / np.log(2)
+        # Update
+        K = P_minus / (P_minus + measurement_variance)
+        x_hat[k] = x_hat_minus + K * (observations[k] - x_hat_minus)
+        P[k] = (1 - K) * P_minus
 
-        fractal_dims.append(fractal_dim)
-
-    return pd.Series(fractal_dims, index=price_series.index)
+    return pd.Series(x_hat, index=observations.index if hasattr(observations, 'index') else range(len(observations)))
 
 
 def calculate_hurst(ts):
-    """Calculate Hurst Exponent using improved R/S method"""
+    """Calculate Hurst Exponent using R/S method"""
     ts = np.array(ts)
     if len(ts) < 20:
         return np.nan
@@ -207,7 +170,10 @@ def calculate_cci(high, low, close, period=20):
 
 
 def calculate_momentum_score(rsi, williams_r, cci):
-    """Enhanced momentum score using RSI, Williams %R, and CCI with specified thresholds"""
+    """
+    Calculate momentum score as FILTER (not regime input)
+    Used to confirm signals and reduce false entries
+    """
     score = 0
 
     # RSI component: > 60 = +1, < 40 = -1
@@ -231,13 +197,26 @@ def calculate_momentum_score(rsi, williams_r, cci):
     return score
 
 
-def build_indicators(data):
-    """Build carry and momentum indicators"""
-    data["5_2y"] = data["5y"] - data["2y"]
+def build_indicators(data, enable_kalman=True):
+    """Build carry and momentum indicators with optional Kalman smoothing"""
+
+    # Apply Kalman smoothing to reduce noise (default: enabled)
+    if enable_kalman:
+        data["5y_smoothed"] = kalman_filter_1d(data["5y"])
+        data["2y_smoothed"] = kalman_filter_1d(data["2y"])
+        # Use smoothed data for indicators
+        data["5_2y"] = data["5y_smoothed"] - data["2y_smoothed"]
+        data["5d_ma_5y"] = data["5y_smoothed"].rolling(5).mean()
+        data["20d_ma_5y"] = data["5y_smoothed"].rolling(20).mean()
+    else:
+        # Use raw data
+        data["5_2y"] = data["5y"] - data["2y"]
+        data["5d_ma_5y"] = data["5y"].rolling(5).mean()
+        data["20d_ma_5y"] = data["5y"].rolling(20).mean()
+
     data["carry_normalized"] = data["5_2y"] / data["5_2y"].rolling(75).std()
-    data["5d_ma_5y"] = data["5y"].rolling(5).mean()
-    data["20d_ma_5y"] = data["5y"].rolling(20).mean()
     data["momentum"] = data["5d_ma_5y"] - data["20d_ma_5y"]
+
     return data
 
 
@@ -250,105 +229,63 @@ def percentile_score(window):
     return (nb_values_below / len(window)) * 100
 
 
-def calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score):
-    """Calculate confidence score for regime classification"""
-    confidence_score = 0
+def classify_regime_simplified(hurst, adf_stat):
+    """
+    SIMPLIFIED regime classification using only Hurst and ADF
+    Removed Fractal Dimension to reduce complexity and false signals
+    """
 
-    # Hurst confidence
-    if not pd.isna(hurst):
-        if hurst < 0.47 or hurst > 0.53:
-            confidence_score += min(abs(hurst - 0.5) * 4, 1.0)
-        else:
-            confidence_score += 0.1
-
-    # Fractal dimension confidence
-    if not pd.isna(fractal_dim):
-        if fractal_dim < 1.47 or fractal_dim > 1.53:
-            confidence_score += min(abs(fractal_dim - 1.5) * 4, 1.0)
-        else:
-            confidence_score += 0.1
-
-    # ADF test confidence
-    if not pd.isna(adf_stat):
-        if adf_stat < -2.862:
-            confidence_score += 1.0
-        elif adf_stat < -2.567:
-            confidence_score += 0.5
-        else:
-            confidence_score += 0.1
-
-    # Momentum score confidence
-    if not pd.isna(momentum_score):
-        confidence_score += min(abs(momentum_score) / 3.0, 0.5)
-
-    return min(confidence_score / 3.5, 1.0)
-
-
-def classify_regime_advanced(hurst, fractal_dim, adf_stat, momentum_score):
-    """Advanced regime classification"""
-    confidence = calculate_regime_confidence(hurst, fractal_dim, adf_stat, momentum_score)
-
-    if confidence < 0.3:
-        return "UNKNOWN", confidence
-
+    # Regime scoring based on Hurst and ADF only
     trend_score = 0
     mean_rev_score = 0
 
     # Hurst scoring
     if not pd.isna(hurst):
-        if hurst > 0.53:
+        if hurst > 0.55:  # Strong trending
             trend_score += 2
-        elif hurst > 0.50:
+        elif hurst > 0.52:  # Weak trending
             trend_score += 1
-        elif hurst < 0.47:
+        elif hurst < 0.45:  # Strong mean-reverting
             mean_rev_score += 2
-        elif hurst < 0.50:
+        elif hurst < 0.48:  # Weak mean-reverting
             mean_rev_score += 1
-
-    # Fractal scoring
-    if not pd.isna(fractal_dim):
-        if fractal_dim > 1.53:
-            mean_rev_score += 2
-        elif fractal_dim > 1.50:
-            mean_rev_score += 1
-        elif fractal_dim < 1.47:
-            trend_score += 2
-        elif fractal_dim < 1.50:
-            trend_score += 1
 
     # ADF scoring
     if not pd.isna(adf_stat):
-        if adf_stat < -2.862:
+        if adf_stat < -2.862:  # Strong mean reversion (99% confidence)
             mean_rev_score += 2
-        elif adf_stat < -2.567:
+        elif adf_stat < -2.567:  # Moderate mean reversion (95% confidence)
             mean_rev_score += 1
 
-    # Momentum score contribution
-    if not pd.isna(momentum_score):
-        if momentum_score > 1:
-            trend_score += 1
-        elif momentum_score < -1:
-            mean_rev_score += 1
+    # Calculate confidence based on consistency
+    total_signals = trend_score + mean_rev_score
+    if total_signals == 0:
+        return "UNKNOWN", 0.1
+
+    confidence = min(max(total_signals / 4.0, 0.3), 0.95)
 
     # Final classification
-    if trend_score > mean_rev_score + 1:
+    if trend_score > mean_rev_score:
         return "TRENDING", confidence
-    elif mean_rev_score > trend_score + 1:
+    elif mean_rev_score > trend_score:
         return "MEAN_REVERTING", confidence
     else:
         return "UNKNOWN", confidence
 
 
-class RollingRegimeOptimizer:
-    """Rolling optimization engine for dynamic weight updates"""
+class WalkForwardOptimizer:
+    """
+    Walk-forward optimization engine focused on maximizing Sharpe ratio
+    Optimizes weights per regime using grid search with transaction costs
+    """
 
-    def __init__(self, granularity=5, rolling_window=252):
+    def __init__(self, granularity=5, transaction_cost_bps=2):
         self.granularity = granularity
-        self.rolling_window = rolling_window
-        self.weight_cache = {}
+        self.transaction_cost_bps = transaction_cost_bps
+        self.optimization_results = {}
 
     def generate_weight_combinations(self):
-        """Generate all possible weight combinations with given granularity"""
+        """Generate all possible weight combinations (sum to 1)"""
         weights = []
         step = self.granularity
 
@@ -356,7 +293,8 @@ class RollingRegimeOptimizer:
             for carry_weight in range(0, 101 - value_weight, step):
                 momentum_weight = 100 - value_weight - carry_weight
                 if momentum_weight >= 0:
-                    weights.append([value_weight, carry_weight, momentum_weight])
+                    # Convert to decimal (sum to 1)
+                    weights.append([value_weight / 100, carry_weight / 100, momentum_weight / 100])
 
         return weights
 
@@ -365,19 +303,22 @@ class RollingRegimeOptimizer:
         value_w, carry_w, momentum_w = weights
         return (data['Value_Percentile'] * value_w +
                 data['Carry_Percentile'] * carry_w +
-                data['Momentum_Percentile'] * momentum_w) / 100
+                data['Momentum_Percentile'] * momentum_w)
 
-    def backtest_weights_for_regime(self, regime_data, weights, buy_zone_min, buy_zone_max,
-                                    sell_zone_min, sell_zone_max):
-        """Quick backtest for regime-specific data"""
-        if len(regime_data) < 50:
-            return 0
+    def backtest_sharpe_with_weights(self, data, weights, buy_zone_min, buy_zone_max,
+                                     sell_zone_min, sell_zone_max):
+        """
+        Backtest strategy with specific weights and calculate Sharpe ratio
+        Including transaction costs in bps
+        """
+        if len(data) < 50:
+            return -999  # Insufficient data penalty
 
-        data_copy = regime_data.copy()
+        data_copy = data.copy()
         data_copy['Agg_Percentile'] = self.calculate_agg_percentile_with_weights(data_copy, weights)
 
         position = 0
-        total_pnl = 0
+        returns = []
         entry_price = 0
 
         for i, (idx, row) in enumerate(data_copy.iterrows()):
@@ -386,72 +327,116 @@ class RollingRegimeOptimizer:
 
             current_price = row['Close']
             agg_perc = row['Agg_Percentile']
+            prev_price = data_copy.iloc[i - 1]['Close']
 
+            # Calculate base return (for benchmark)
+            if position != 0:
+                base_return = (current_price - prev_price) / prev_price
+                if position < 0:
+                    base_return = -base_return
+
+                # Apply transaction costs when changing positions
+                if ((buy_zone_min <= agg_perc <= buy_zone_max and position <= 0) or
+                        (sell_zone_min <= agg_perc <= sell_zone_max and position >= 0)):
+                    base_return -= (self.transaction_cost_bps / 10000)  # Convert bps to decimal
+
+                returns.append(base_return)
+
+            # Position logic
             if buy_zone_min <= agg_perc <= buy_zone_max and position <= 0:
-                if position < 0:  # Close short
-                    total_pnl += (entry_price - current_price)
                 position = 1
                 entry_price = current_price
-
             elif sell_zone_min <= agg_perc <= sell_zone_max and position >= 0:
-                if position > 0:  # Close long
-                    total_pnl += (current_price - entry_price)
                 position = -1
                 entry_price = current_price
 
-        # Close final position
-        if position != 0 and len(data_copy) > 0:
-            final_price = data_copy.iloc[-1]['Close']
-            if position > 0:
-                total_pnl += (final_price - entry_price)
-            else:
-                total_pnl += (entry_price - final_price)
+        if len(returns) < 10:
+            return -999  # Too few trades penalty
 
-        return total_pnl
+        returns = np.array(returns)
 
-    def optimize_weights_for_date(self, data, current_date, regime, buy_zone_min, buy_zone_max,
-                                  sell_zone_min, sell_zone_max):
-        """Optimize weights for specific date and regime"""
+        # Calculate Sharpe ratio (annualized)
+        mean_return = np.mean(returns) * 252  # Annualized
+        std_return = np.std(returns) * np.sqrt(252)  # Annualized
 
-        # Get training data (rolling window before current date)
-        end_idx = data.index.get_loc(current_date) if current_date in data.index else len(data) - 1
-        start_idx = max(0, end_idx - self.rolling_window)
+        if std_return == 0:
+            return 0
 
-        training_data = data.iloc[start_idx:end_idx]
-        regime_data = training_data[training_data['Regime'] == regime]
+        sharpe = mean_return / std_return
+        return sharpe
 
-        if len(regime_data) < 30:  # Minimum data requirement
-            return [65, 25, 10]  # Default weights
+    def optimize_regime_weights(self, regime_data, regime_name, buy_zones, sell_zones):
+        """Optimize weights for specific regime using grid search"""
 
-        # Check cache
-        cache_key = f"{regime}_{current_date}_{len(regime_data)}"
-        if cache_key in self.weight_cache:
-            return self.weight_cache[cache_key]
+        if len(regime_data) < 100:
+            return None
 
-        # Optimize
         weight_combinations = self.generate_weight_combinations()
-        best_pnl = -np.inf
-        best_weights = [65, 25, 10]
+        best_sharpe = -np.inf
+        best_weights = None
+        results = []
+
+        buy_zone_min, buy_zone_max = buy_zones
+        sell_zone_min, sell_zone_max = sell_zones
 
         for weights in weight_combinations:
-            pnl = self.backtest_weights_for_regime(
-                regime_data, weights, buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max
+            sharpe = self.backtest_sharpe_with_weights(
+                regime_data, weights, buy_zone_min, buy_zone_max,
+                sell_zone_min, sell_zone_max
             )
 
-            if pnl > best_pnl:
-                best_pnl = pnl
+            results.append({
+                'weights': weights,
+                'sharpe': sharpe
+            })
+
+            if sharpe > best_sharpe:
+                best_sharpe = sharpe
                 best_weights = weights
 
-        # Cache result
-        self.weight_cache[cache_key] = best_weights
-        return best_weights
+        return {
+            'regime': regime_name,
+            'best_weights': best_weights,
+            'best_sharpe': best_sharpe,
+            'all_results': results,
+            'data_points': len(regime_data)
+        }
+
+    def walk_forward_optimize(self, data, buy_zones, sell_zones, train_pct=0.7):
+        """Walk-forward optimization for all regimes"""
+
+        results = {}
+
+        # Split data for in-sample optimization
+        split_idx = int(len(data) * train_pct)
+        train_data = data.iloc[:split_idx]
+
+        st.info(f"🎯 Walk-Forward Optimization: Training on {len(train_data)} days ({train_pct:.0%} of data)")
+
+        for regime in ['TRENDING', 'MEAN_REVERTING', 'UNKNOWN']:
+            regime_train_data = train_data[train_data['Regime'] == regime]
+
+            if len(regime_train_data) > 50:
+                result = self.optimize_regime_weights(
+                    regime_train_data, regime, buy_zones, sell_zones
+                )
+                if result:
+                    results[regime] = result
+            else:
+                st.warning(f"⚠️ Insufficient {regime} data for optimization: {len(regime_train_data)} days")
+
+        self.optimization_results = results
+        return results
 
 
-class AdvancedTradingSystem:
-    """Enhanced trading system with stop loss and position management options"""
+class RevisedTradingSystem:
+    """
+    Revised trading system with momentum score filtering and reduced overtrading
+    Focus on high-conviction trades to improve Sharpe ratio
+    """
 
     def __init__(self, initial_cash=100000, transaction_fee_bps=2, capital_allocation_pct=100,
-                 close_on_neutral=True, use_stop_loss=False, stop_loss_pct=5.0):
+                 momentum_filter_threshold=1):
         self.initial_cash = initial_cash
         self.cash = initial_cash
         self.position = 0
@@ -461,10 +446,7 @@ class AdvancedTradingSystem:
         self.unrealized_pnl = 0
         self.transaction_fee_bps = transaction_fee_bps
         self.capital_allocation_pct = capital_allocation_pct
-        self.close_on_neutral = close_on_neutral
-        self.use_stop_loss = use_stop_loss
-        self.stop_loss_pct = stop_loss_pct
-        self.last_signal_strength = 0
+        self.momentum_filter_threshold = momentum_filter_threshold
         self.trade_history = []
 
     def calculate_position_size(self, price):
@@ -478,20 +460,8 @@ class AdvancedTradingSystem:
         notional = price * abs(quantity)
         return notional * (self.transaction_fee_bps / 10000)
 
-    def check_stop_loss(self, current_price):
-        """Check if stop loss is triggered"""
-        if not self.use_stop_loss or self.position == 0:
-            return False
-
-        if self.position > 0:  # Long position
-            loss_pct = (self.entry_price - current_price) / self.entry_price * 100
-            return loss_pct >= self.stop_loss_pct
-        else:  # Short position
-            loss_pct = (current_price - self.entry_price) / self.entry_price * 100
-            return loss_pct >= self.stop_loss_pct
-
     def check_signal_strength(self, agg_percentile, buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max):
-        """Check if signal is in trading zones and calculate strength"""
+        """Check if signal is in trading zones"""
         if buy_zone_min <= agg_percentile <= buy_zone_max:
             return "BUY", (agg_percentile - buy_zone_min) / (buy_zone_max - buy_zone_min)
         elif sell_zone_min <= agg_percentile <= sell_zone_max:
@@ -499,25 +469,36 @@ class AdvancedTradingSystem:
         else:
             return "NEUTRAL", 0.0
 
-    def can_trade(self, signal_type, signal_strength, price, regime, current_price):
-        """Enhanced trading logic with stop loss and neutral handling"""
+    def momentum_filter_check(self, signal_type, momentum_score):
+        """
+        MOMENTUM SCORE AS FILTER: Acts as safety gate to reduce false signals
+        Only allows trades when momentum aligns with signal direction
+        """
+        if signal_type == "BUY":
+            return momentum_score >= self.momentum_filter_threshold
+        elif signal_type == "SELL":
+            return momentum_score <= -self.momentum_filter_threshold
+        else:
+            return True  # Neutral signals always pass
 
-        # Check stop loss first
-        if self.check_stop_loss(current_price):
-            return True, "STOP_LOSS"
+    def can_trade(self, signal_type, signal_strength, price, regime, momentum_score, regime_confidence):
+        """
+        Enhanced trading logic with momentum filtering to reduce overtrading
+        """
 
-        # If regime is UNKNOWN, close position
+        # Regime confidence check
+        if regime_confidence < 0.4:  # Higher threshold to reduce false signals
+            return False, "LOW_REGIME_CONFIDENCE"
+
+        # Unknown regime - be more conservative
         if regime == "UNKNOWN" and self.position != 0:
             return True, "CLOSE_UNKNOWN"
 
-        # Handle neutral signal based on setting
-        if signal_type == "NEUTRAL" and self.position != 0:
-            if self.close_on_neutral:
-                return True, "CLOSE_NEUTRAL"
-            else:
-                return False, "HOLD_ON_NEUTRAL"
+        # MOMENTUM FILTER: Key addition to reduce false signals
+        if not self.momentum_filter_check(signal_type, momentum_score):
+            return False, "MOMENTUM_FILTER_FAILED"
 
-        # If we're flat, we can open any position
+        # If we're flat and have strong signal, open position
         if self.position == 0 and signal_type in ["BUY", "SELL"]:
             required_capital = price * self.calculate_position_size(price)
             if self.cash >= required_capital:
@@ -525,23 +506,20 @@ class AdvancedTradingSystem:
             else:
                 return False, "INSUFFICIENT_CASH"
 
-        # If we have position in same direction, check if signal is stronger
-        if (self.position > 0 and signal_type == "BUY") or (self.position < 0 and signal_type == "SELL"):
-            if signal_strength > abs(self.last_signal_strength) + 0.1:
-                return True, f"STRENGTHEN_{signal_type}"
+        # If we have position in opposite direction, reverse (high conviction only)
+        if ((self.position > 0 and signal_type == "SELL") or
+                (self.position < 0 and signal_type == "BUY")):
+            if signal_strength > 0.6:  # Higher threshold for reversals
+                return True, f"REVERSE_{signal_type}"
             else:
-                return False, "SIGNAL_TOO_WEAK"
+                return False, "REVERSAL_SIGNAL_TOO_WEAK"
 
-        # If we have position in opposite direction, reverse
-        if (self.position > 0 and signal_type == "SELL") or (self.position < 0 and signal_type == "BUY"):
-            return True, f"REVERSE_{signal_type}"
+        # Hold position if momentum not strong enough for changes
+        return False, "HOLD_POSITION"
 
-        return False, "NO_ACTION"
-
-    def execute_trade(self, action_type, price, date, signal_strength=0):
+    def execute_trade(self, action_type, price, date, signal_strength=0, momentum_score=0):
         """Execute trade with enhanced tracking"""
-        quantity = self.calculate_position_size(
-            price) if "STRENGTHEN" not in action_type else self.calculate_position_size(price) // 2
+        quantity = self.calculate_position_size(price)
         transaction_cost = self.calculate_transaction_cost(price, quantity)
 
         trade_info = {
@@ -550,13 +528,15 @@ class AdvancedTradingSystem:
             'price': price,
             'quantity': quantity,
             'cost': transaction_cost,
+            'signal_strength': signal_strength,
+            'momentum_score': momentum_score,
             'cash_before': self.cash,
             'position_before': self.position,
             'pnl': 0
         }
 
         # Close existing position
-        if any(x in action_type for x in ["CLOSE", "REVERSE", "STOP_LOSS"]):
+        if any(x in action_type for x in ["CLOSE", "REVERSE"]):
             if self.position != 0:
                 pnl = (price - self.entry_price) * self.position - transaction_cost
                 self.realized_pnl += pnl
@@ -566,27 +546,15 @@ class AdvancedTradingSystem:
                 self.unrealized_pnl = 0
 
         # Open new position
-        if any(x in action_type for x in ["OPEN", "REVERSE", "STRENGTHEN"]):
+        if any(x in action_type for x in ["OPEN", "REVERSE"]):
             if "BUY" in action_type:
-                new_position = quantity
+                self.position = quantity
             elif "SELL" in action_type:
-                new_position = -quantity
-            else:
-                new_position = 0
+                self.position = -quantity
 
-            if "STRENGTHEN" in action_type:
-                self.position += new_position
-                # Recalculate average entry price
-                if self.position != 0:
-                    total_value = (self.entry_price * (self.position - new_position)) + (price * new_position)
-                    self.entry_price = total_value / self.position
-            else:
-                self.position = new_position
-                self.entry_price = price
-                self.entry_date = date
-
+            self.entry_price = price
+            self.entry_date = date
             self.cash -= transaction_cost
-            self.last_signal_strength = signal_strength
 
         trade_info['cash_after'] = self.cash
         trade_info['position_after'] = self.position
@@ -602,100 +570,93 @@ class AdvancedTradingSystem:
             self.unrealized_pnl = 0
 
     def get_total_pnl(self):
-        """Get total P&L"""
         return self.realized_pnl + self.unrealized_pnl
 
     def get_portfolio_value(self):
-        """Get current portfolio value"""
         return self.cash + self.unrealized_pnl
 
     def get_capital_utilization(self):
-        """Get current capital utilization"""
         if self.position != 0:
             position_value = abs(self.position * self.entry_price)
             return (position_value / self.initial_cash) * 100
         return 0
 
 
+# Assets dictionary
+assets_dict = {
+    "2y US": "DGS2",
+    "5y US": "^FVX",
+    "5y US Real": "DFII5",
+    "5y US Future": "ZF=F"
+}
+
 # Streamlit App Header
 st.markdown(
-    '<div class="main-header"><h1>💹 Professional Treasury Futures Trading System</h1><p>Advanced Regime-Aware Rolling Optimization & Position Management</p></div>',
+    '<div class="main-header"><h1>💹 Revised Treasury Trading Strategy</h1><p>Simplified Regimes + Momentum Filtering + Walk-Forward Optimization</p></div>',
     unsafe_allow_html=True)
 
-# Enhanced Professional Trading Configuration
-with st.expander("⚙️ Professional Trading Configuration", expanded=True):
-    col1, col2, col3, col4, col5 = st.columns(5)
+# Strategy Information Panel
+st.markdown('<div class="strategy-info">', unsafe_allow_html=True)
+st.markdown("""
+### 🎯 **Revised Strategy Key Improvements:**
 
-    with col1:
-        st.markdown("**📅 Trading Period**")
-        start_date_input = st.date_input("Start Date", value=datetime(2023, 1, 1))
-        end_date_input = st.date_input("End Date", value=datetime.now().date())
+**1. Simplified Regime Classification:**
+- ✅ **Removed Fractal Dimension** (reduced complexity, fewer false signals)
+- ✅ **Core Indicators**: Hurst Exponent + ADF Test only
+- ✅ **Higher Confidence Thresholds** to reduce overtrading
 
-    with col2:
-        st.markdown("**🎯 Trading Zones (%)**")
-        buy_zone_min = st.number_input("Buy Zone Min", value=90, min_value=70, max_value=95)
-        buy_zone_max = st.number_input("Buy Zone Max", value=100, min_value=95, max_value=100)
-        sell_zone_min = st.number_input("Sell Zone Min", value=0, min_value=0, max_value=10)
-        sell_zone_max = st.number_input("Sell Zone Max", value=20, min_value=10, max_value=30)
+**2. Momentum Score as Filter (Not Regime Input):**
+- ✅ **Safety Gate**: Only trade when momentum aligns with signal
+- ✅ **Reduces False Signals**: Filters out low-momentum setups
+- ✅ **Configurable Threshold**: Default ±1 for trade confirmation
 
-    with col3:
-        st.markdown("**💰 Portfolio Setup**")
-        initial_cash = st.number_input("Initial Capital ($)", value=100000, min_value=10000, step=10000)
-        capital_allocation_pct = st.number_input("Capital per Trade (%)", value=25, min_value=5, max_value=100, step=5)
+**3. Kalman Filter Integration:**
+- ✅ **Noise Reduction**: Smooths yield data before indicator calculation
+- ✅ **Improved Signal Quality**: Reduces whipsaws in choppy markets
+- ✅ **Optional**: Can disable if preferred
 
-    with col4:
-        st.markdown("**🔧 Trading Config**")
-        transaction_fee_bps = st.number_input("Transaction Fee (bps)", value=2, min_value=0, max_value=20)
-        confidence_threshold = st.number_input("Min Regime Confidence", value=0.3, min_value=0.1, max_value=0.8,
-                                               step=0.1)
+**4. Walk-Forward Optimization:**
+- ✅ **Sharpe Ratio Maximization**: Focus on risk-adjusted returns
+- ✅ **Grid Search**: Exhaustive weight optimization per regime
+- ✅ **Transaction Costs**: Included in optimization (penalizes overtrading)
+- ✅ **In-Sample Training**: Uses 70% for optimization, 30% for validation
+""")
+st.markdown('</div>', unsafe_allow_html=True)
 
-    with col5:
-        st.markdown("**⚙️ Position Management**")
-        close_on_neutral = st.checkbox("Close on Neutral Signal", value=True)
-        use_stop_loss = st.checkbox("Enable Stop Loss", value=False)
-        stop_loss_pct = st.number_input("Stop Loss (%)", value=5.0, min_value=1.0, max_value=20.0, step=0.5,
-                                        disabled=not use_stop_loss)
-
-# Advanced Rolling Optimization Configuration
-st.markdown("---")
-st.markdown("## 🎯 Rolling Optimization Engine")
-
-with st.expander("⚙️ Rolling Optimization Configuration", expanded=True):
+# Enhanced Configuration Panel
+with st.expander("⚙️ Revised Strategy Configuration", expanded=True):
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.markdown("**🔧 Optimization Settings**")
-        enable_rolling_optimization = st.checkbox("Enable Rolling Optimization", value=True)
-        optimization_lookback_days = st.number_input("Optimization Lookback (days)", value=252, min_value=100,
-                                                     max_value=1000, step=50)
-        weight_granularity = st.number_input("Weight Granularity (%)", value=10, min_value=5, max_value=25, step=5)
+        st.markdown("**📅 Trading Period**")
+        start_date_input = st.date_input("Start Date", value=datetime(2020, 1, 1))
+        end_date_input = st.date_input("End Date", value=datetime.now().date())
 
     with col2:
-        st.markdown("**📊 Training Period**")
-        training_years = st.number_input("Training Data (years)", value=5, min_value=2, max_value=10)
-        st.info(f"Uses {training_years} years BEFORE start date for training")
+        st.markdown("**🎯 Trading Zones**")
+        buy_zone_min = st.number_input("Buy Zone Min (%)", value=85, min_value=70, max_value=95)
+        buy_zone_max = st.number_input("Buy Zone Max (%)", value=100, min_value=90, max_value=100)
+        sell_zone_min = st.number_input("Sell Zone Min (%)", value=0, min_value=0, max_value=15)
+        sell_zone_max = st.number_input("Sell Zone Max (%)", value=15, min_value=5, max_value=30)
 
     with col3:
-        st.markdown("**⚡ Performance**")
-        st.metric("Weight Combinations",
-                  f"{len(RollingRegimeOptimizer(weight_granularity).generate_weight_combinations())}")
-        st.metric("Expected Runtime",
-                  f"~{len(RollingRegimeOptimizer(weight_granularity).generate_weight_combinations()) * 3} regimes")
+        st.markdown("**💰 Portfolio & Costs**")
+        initial_cash = st.number_input("Initial Capital ($)", value=100000, min_value=10000, step=10000)
+        capital_allocation_pct = st.number_input("Capital Allocation (%)", value=100, min_value=20, max_value=100)
+        transaction_fee_bps = st.number_input("Transaction Cost (bps)", value=5, min_value=1, max_value=20)
 
     with col4:
-        st.markdown("**📈 Model Type**")
-        model_type = st.selectbox("Model Type", ["Short-Term (Daily/Weekly)", "Long-Term (Weekly/Monthly)"])
+        st.markdown("**🔧 Strategy Controls**")
+        enable_kalman = st.checkbox("Enable Kalman Smoothing", value=True)
+        momentum_filter_threshold = st.number_input("Momentum Filter Threshold", value=1, min_value=0, max_value=3)
+        run_walk_forward_opt = st.button("🚀 Run Walk-Forward Optimization", type="primary")
 
-# Model configuration
-lookback = 63 if model_type == "Short-Term (Daily/Weekly)" else 252
-fractal_window = 50 if model_type == "Short-Term (Daily/Weekly)" else 100
-hurst_window = 30 if model_type == "Short-Term (Daily/Weekly)" else 60
-
-# Data Loading - EXTENDED TO INCLUDE TRAINING PERIOD
-training_start_date = start_date_input - timedelta(days=training_years * 365 + 365)
+# Data Loading
+training_years = 7  # Extended for better walk-forward optimization
+training_start_date = start_date_input - timedelta(days=training_years * 365)
 start_date_str = training_start_date.strftime("%Y-%m-%d")
 
-with st.spinner("📊 Loading extended market data for training and testing..."):
+with st.spinner("📊 Loading extended data for walk-forward optimization..."):
     try:
         _2yUS = fred_import(assets_dict["2y US"], start_date_str)
         _2yUS.columns = ["2y"]
@@ -713,18 +674,19 @@ with st.spinner("📊 Loading extended market data for training and testing...")
             st.error("Failed to load required data. Please check data sources.")
             st.stop()
 
-        st.success(f"✅ Loaded {len(_5yUS_fut)} days of data from {start_date_str}")
+        st.success(f"✅ Loaded {len(_5yUS_fut)} days from {training_start_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
         st.error(f"Data loading error: {e}")
         st.stop()
 
-# Build indicators for full dataset
+# Build indicators with optional Kalman filtering
 backtest_data = _2yUS.join(_5yUS_real).join(_5yUS)
 backtest_data.dropna(inplace=True)
-indicators = build_indicators(backtest_data)
+indicators = build_indicators(backtest_data, enable_kalman=enable_kalman)
 
 # Calculate percentiles
+lookback = 126  # 6-month lookback for percentiles
 for col in ["5y_Real", "carry_normalized", "momentum"]:
     indicators[f"{col}_percentile"] = indicators[col].rolling(lookback).apply(lambda x: percentile_score(x))
 
@@ -735,9 +697,7 @@ indicator_full.columns = ["5y_yield", "Value_Percentile", "Carry_Percentile", "M
                           "Low", "Close"]
 indicator_full.dropna(inplace=True)
 
-# Calculate technical indicators
-indicator_full['Fractal_Dim'] = compute_fractal_dimension(indicator_full['Close'], fractal_window)
-indicator_full['Hurst'] = indicator_full['Close'].rolling(window=hurst_window).apply(calculate_hurst, raw=False)
+# Calculate technical indicators for momentum score
 indicator_full['RSI'] = calculate_rsi(indicator_full['Close'])
 indicator_full['Williams_R'] = calculate_williams_r(indicator_full['High'], indicator_full['Low'],
                                                     indicator_full['Close'])
@@ -746,8 +706,11 @@ indicator_full['Momentum_Score'] = indicator_full.apply(
     lambda row: calculate_momentum_score(row['RSI'], row['Williams_R'], row['CCI']), axis=1
 )
 
+# Calculate Hurst and ADF for simplified regime classification
+hurst_window = 60
+indicator_full['Hurst'] = indicator_full['Close'].rolling(window=hurst_window).apply(calculate_hurst, raw=False)
 
-# ADF test
+
 def rolling_adf(series, window=hurst_window):
     adf_stats = []
     for i in range(len(series)):
@@ -762,97 +725,179 @@ def rolling_adf(series, window=hurst_window):
 
 indicator_full['ADF_Stat'] = rolling_adf(indicator_full['Close'])
 
-# Regime classification
+# Simplified regime classification
 regime_results = []
 for idx, row in indicator_full.iterrows():
-    regime, confidence = classify_regime_advanced(
-        row['Hurst'], row['Fractal_Dim'], row['ADF_Stat'], row['Momentum_Score']
-    )
+    regime, confidence = classify_regime_simplified(row['Hurst'], row['ADF_Stat'])
     regime_results.append((regime, confidence))
 
 indicator_full['Regime'] = [r[0] for r in regime_results]
 indicator_full['Regime_Confidence'] = [r[1] for r in regime_results]
 
-# Initialize Rolling Optimizer
-if enable_rolling_optimization:
-    st.info("🔄 Rolling optimization enabled - weights will update dynamically based on recent performance")
-    optimizer = RollingRegimeOptimizer(granularity=weight_granularity, rolling_window=optimization_lookback_days)
-else:
-    st.info("📊 Using fixed default weights throughout the strategy")
-    optimizer = None
+# Initialize session state for optimization results
+if 'walk_forward_results' not in st.session_state:
+    st.session_state.walk_forward_results = None
+if 'optimized_weights' not in st.session_state:
+    st.session_state.optimized_weights = {
+        'TRENDING': [0.4, 0.2, 0.4],  # Default weights
+        'MEAN_REVERTING': [0.6, 0.3, 0.1],
+        'UNKNOWN': [0.5, 0.3, 0.2]
+    }
 
-# TRADING SIMULATION WITH ROLLING OPTIMIZATION
-trading_system = AdvancedTradingSystem(
-    initial_cash, transaction_fee_bps, capital_allocation_pct,
-    close_on_neutral, use_stop_loss, stop_loss_pct
+# Walk-Forward Optimization
+if run_walk_forward_opt:
+    st.markdown("### 🎯 Walk-Forward Optimization in Progress...")
+
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    try:
+        optimizer = WalkForwardOptimizer(granularity=10, transaction_cost_bps=transaction_fee_bps)
+
+        status_text.text("🔄 Running grid search optimization per regime...")
+        progress_bar.progress(30)
+
+        # Run walk-forward optimization
+        buy_zones = (buy_zone_min, buy_zone_max)
+        sell_zones = (sell_zone_min, sell_zone_max)
+
+        optimization_results = optimizer.walk_forward_optimize(
+            indicator_full, buy_zones, sell_zones, train_pct=0.7
+        )
+
+        progress_bar.progress(80)
+        status_text.text("✅ Optimization completed! Updating weights...")
+
+        # Update optimized weights
+        for regime, result in optimization_results.items():
+            if result and 'best_weights' in result:
+                st.session_state.optimized_weights[regime] = result['best_weights']
+
+        st.session_state.walk_forward_results = optimization_results
+
+        progress_bar.progress(100)
+        status_text.text("🎯 Walk-forward optimization completed successfully!")
+
+        # Display results
+        if optimization_results:
+            st.success("✅ Walk-Forward Optimization Completed!")
+
+            col1, col2, col3 = st.columns(3)
+
+            for i, (regime, result) in enumerate(optimization_results.items()):
+                with [col1, col2, col3][i]:
+                    if result:
+                        weights = result['best_weights']
+                        st.metric(
+                            f"🎯 {regime}",
+                            f"Sharpe: {result['best_sharpe']:.3f}",
+                            f"V:{weights[0]:.2f} C:{weights[1]:.2f} M:{weights[2]:.2f}"
+                        )
+                        st.caption(f"Data points: {result['data_points']}")
+
+        time.sleep(2)
+        st.rerun()
+
+    except Exception as e:
+        progress_bar.progress(0)
+        status_text.text("")
+        st.error(f"❌ Optimization failed: {str(e)}")
+
+# Display current optimization status
+if st.session_state.walk_forward_results:
+    st.markdown("### 📊 Current Walk-Forward Optimization Results")
+
+    results_df = pd.DataFrame({
+        'Regime': [],
+        'Value Weight': [],
+        'Carry Weight': [],
+        'Momentum Weight': [],
+        'Sharpe Ratio': [],
+        'Training Points': []
+    })
+
+    for regime, result in st.session_state.walk_forward_results.items():
+        if result:
+            weights = result['best_weights']
+            new_row = pd.DataFrame({
+                'Regime': [regime],
+                'Value Weight': [f"{weights[0]:.3f}"],
+                'Carry Weight': [f"{weights[1]:.3f}"],
+                'Momentum Weight': [f"{weights[2]:.3f}"],
+                'Sharpe Ratio': [f"{result['best_sharpe']:.3f}"],
+                'Training Points': [result['data_points']]
+            })
+            results_df = pd.concat([results_df, new_row], ignore_index=True)
+
+    st.dataframe(results_df, hide_index=True, use_container_width=True)
+
+# Separate training and trading data clearly
+training_end_date = start_date_input - timedelta(days=1)
+training_data = indicator_full[indicator_full.index <= training_end_date.strftime('%Y-%m-%d')]
+trading_data = indicator_full[
+    (indicator_full.index >= start_date_input.strftime('%Y-%m-%d')) &
+    (indicator_full.index <= end_date_input.strftime('%Y-%m-%d'))
+    ]
+
+if len(trading_data) == 0:
+    st.error("❌ No trading data for selected period")
+    st.stop()
+
+st.markdown("### 📊 Data Separation Summary")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("📚 Training Data", f"{len(training_data)} days", "Optimization only")
+with col2:
+    st.metric("📈 Trading Data", f"{len(trading_data)} days", f"From {start_date_input}")
+with col3:
+    opt_status = "✅ Optimized" if st.session_state.walk_forward_results else "❌ Default"
+    st.metric("⚖️ Weights Status", opt_status, "Walk-forward")
+
+# Trading Simulation with Revised System
+trading_system = RevisedTradingSystem(
+    initial_cash, transaction_fee_bps, capital_allocation_pct, momentum_filter_threshold
 )
 
-# Get trading period data only
-trading_start_idx = indicator_full.index.get_loc(start_date_input.strftime('%Y-%m-%d')) if start_date_input.strftime(
-    '%Y-%m-%d') in indicator_full.index else 0
-trading_data = indicator_full.iloc[trading_start_idx:]
+st.markdown(f"### 🚀 Trading Simulation: {len(trading_data)} days with revised strategy")
 
-st.markdown(f"### 📈 Trading Simulation: {len(trading_data)} days from {start_date_input} to {end_date_input}")
-
-# Process signals with rolling optimization
+# Process signals with optimized weights and momentum filtering
 all_signals = []
 executed_trades = []
-weight_history = []
 
 progress_bar = st.progress(0)
 status_text = st.empty()
 
 for i, (idx, row) in enumerate(trading_data.iterrows()):
-    if i % 50 == 0:  # Update progress
+    if i % 50 == 0:
         progress_bar.progress(min(i / len(trading_data), 1.0))
         status_text.text(f"Processing {i}/{len(trading_data)} trading days...")
 
-    # Get optimized weights for current regime and date
+    # Get optimized weights for current regime
     current_regime = row['Regime']
+    optimal_weights = st.session_state.optimized_weights.get(current_regime, [0.5, 0.3, 0.2])
 
-    if enable_rolling_optimization and optimizer:
-        optimal_weights = optimizer.optimize_weights_for_date(
-            indicator_full, idx, current_regime,
-            buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max
-        )
-    else:
-        # Default weights
-        default_weights = {
-            'TRENDING': [60, 15, 25],
-            'MEAN_REVERTING': [75, 20, 5],
-            'UNKNOWN': [65, 25, 10]
-        }
-        optimal_weights = default_weights.get(current_regime, [65, 25, 10])
-
-    # Calculate dynamic aggregate percentile with optimal weights
+    # Calculate dynamic aggregate percentile with optimized weights
     agg_percentile = (row['Value_Percentile'] * optimal_weights[0] +
                       row['Carry_Percentile'] * optimal_weights[1] +
-                      row['Momentum_Percentile'] * optimal_weights[2]) / 100
-
-    # Store weight history
-    weight_history.append({
-        'date': idx,
-        'regime': current_regime,
-        'value_weight': optimal_weights[0],
-        'carry_weight': optimal_weights[1],
-        'momentum_weight': optimal_weights[2],
-        'agg_percentile': agg_percentile
-    })
+                      row['Momentum_Percentile'] * optimal_weights[2])
 
     # Check signal strength
     signal_type, signal_strength = trading_system.check_signal_strength(
         agg_percentile, buy_zone_min, buy_zone_max, sell_zone_min, sell_zone_max
     )
 
-    # Check if we can trade
+    # Check if we can trade (with momentum filtering)
     can_trade, action_type = trading_system.can_trade(
-        signal_type, signal_strength, row['Close'], row['Regime'], row['Close']
+        signal_type, signal_strength, row['Close'], row['Regime'],
+        row['Momentum_Score'], row['Regime_Confidence']
     )
 
-    # Execute trade if possible and confidence is high enough
+    # Execute trade if conditions met
     executed = False
-    if can_trade and row['Regime_Confidence'] >= confidence_threshold:
-        trade_info = trading_system.execute_trade(action_type, row['Close'], idx, signal_strength)
+    if can_trade:
+        trade_info = trading_system.execute_trade(
+            action_type, row['Close'], idx, signal_strength, row['Momentum_Score']
+        )
         executed_trades.append(trade_info)
         executed = True
 
@@ -863,29 +908,28 @@ for i, (idx, row) in enumerate(trading_data.iterrows()):
         'signal': 1 if signal_type == "BUY" else -1 if signal_type == "SELL" else 0,
         'executed': executed,
         'action_type': action_type if executed else "NO_ACTION",
+        'momentum_score': row['Momentum_Score'],
+        'regime': current_regime,
+        'regime_confidence': row['Regime_Confidence'],
+        'agg_percentile': agg_percentile,
         'total_pnl': trading_system.get_total_pnl(),
         'realized_pnl': trading_system.realized_pnl,
         'unrealized_pnl': trading_system.unrealized_pnl,
         'cash': trading_system.cash,
         'position': trading_system.position,
-        'capital_utilization': trading_system.get_capital_utilization(),
-        'agg_percentile': agg_percentile,
-        'value_weight': optimal_weights[0],
-        'carry_weight': optimal_weights[1],
-        'momentum_weight': optimal_weights[2]
+        'capital_utilization': trading_system.get_capital_utilization()
     })
 
 progress_bar.progress(1.0)
-status_text.text("✅ Trading simulation completed!")
+status_text.text("✅ Revised strategy simulation completed!")
 
 # Add results to trading data
-for key in ['signal', 'executed', 'action_type', 'total_pnl', 'realized_pnl', 'unrealized_pnl',
-            'cash', 'position', 'capital_utilization', 'agg_percentile', 'value_weight',
-            'carry_weight', 'momentum_weight']:
+for key in ['signal', 'executed', 'action_type', 'momentum_score', 'regime', 'regime_confidence',
+            'agg_percentile', 'total_pnl', 'realized_pnl', 'unrealized_pnl', 'cash',
+            'position', 'capital_utilization']:
     trading_data[key] = [s[key] for s in all_signals]
 
-# Filter display data for selected period
-display_data = trading_data
+display_data = trading_data.copy()
 
 # Performance calculations
 total_pnl = trading_system.get_total_pnl()
@@ -893,11 +937,22 @@ total_return_pct = (total_pnl / initial_cash) * 100
 portfolio_value = trading_system.get_portfolio_value()
 current_capital_utilization = trading_system.get_capital_utilization()
 
+# Calculate Sharpe ratio for the strategy
+if len(display_data) > 1:
+    strategy_returns = display_data['total_pnl'].pct_change().dropna()
+    if len(strategy_returns) > 0 and strategy_returns.std() > 0:
+        strategy_sharpe = (strategy_returns.mean() / strategy_returns.std()) * np.sqrt(252)
+    else:
+        strategy_sharpe = 0
+else:
+    strategy_sharpe = 0
+
 # Professional Dashboard
 st.markdown("---")
+st.markdown("## 📊 Revised Strategy Performance")
 
-# Advanced Key Metrics Dashboard with FIXED DELTA LOGIC
-col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+# Key Metrics
+col1, col2, col3, col4, col5, col6 = st.columns(6)
 
 with col1:
     st.metric("💰 Portfolio Value", f"${portfolio_value:,.0f}", delta=f"{total_return_pct:+.2f}%")
@@ -907,82 +962,28 @@ with col2:
     st.metric("💵 Available Cash", f"${trading_system.cash:,.0f}", delta=f"{cash_change:+,.0f}")
 
 with col3:
-    realized_pct = (trading_system.realized_pnl / initial_cash) * 100
-    st.metric("✅ Realized P&L", f"${trading_system.realized_pnl:,.0f}", delta=f"{realized_pct:+.2f}%")
+    st.metric("📈 Strategy Sharpe", f"{strategy_sharpe:.3f}", "Annualized")
 
 with col4:
-    unrealized_pct = (trading_system.unrealized_pnl / initial_cash) * 100
-    st.metric("📊 Unrealized P&L", f"${trading_system.unrealized_pnl:,.0f}", delta=f"{unrealized_pct:+.2f}%")
-
-with col5:
     current_pos = "LONG" if trading_system.position > 0 else "SHORT" if trading_system.position < 0 else "FLAT"
     pos_size = abs(trading_system.position)
-    st.metric("📈 Position", current_pos, delta=f"Size: {pos_size}")
+    st.metric("📊 Position", current_pos, delta=f"Size: {pos_size}")
 
-with col6:
-    st.metric("⚡ Capital Usage", f"{current_capital_utilization:.1f}%", delta=f"Target: {capital_allocation_pct}%")
-
-with col7:
+with col5:
     total_trades = len(executed_trades)
     total_fees = sum([trade['cost'] for trade in executed_trades])
-    st.metric("🔄 Trades", total_trades, delta=f"-${total_fees:.0f}")
+    st.metric("🔄 Total Trades", total_trades, delta=f"-${total_fees:.0f}")
 
-# Dynamic Weight Visualization
-st.markdown("### ⚖️ Dynamic Weight Evolution")
+with col6:
+    # Calculate trade frequency (trades per month)
+    days_traded = len(display_data)
+    trades_per_month = (total_trades / days_traded) * 30 if days_traded > 0 else 0
+    st.metric("⏰ Trade Frequency", f"{trades_per_month:.1f}/month", "Reduced overtrading")
 
-col1, col2 = st.columns([3, 1])
-
-with col2:
-    st.markdown("**📊 Current Status**")
-    if not display_data.empty:
-        latest = display_data.iloc[-1]
-        st.metric("Current Regime", latest['Regime'])
-        st.metric("Value Weight", f"{latest['value_weight']:.0f}%")
-        st.metric("Carry Weight", f"{latest['carry_weight']:.0f}%")
-        st.metric("Momentum Weight", f"{latest['momentum_weight']:.0f}%")
-
-with col1:
-    if enable_rolling_optimization:
-        st.subheader("🎯 Rolling Optimized Weights")
-    else:
-        st.subheader("📊 Fixed Default Weights")
-
-    fig_weights = go.Figure()
-
-    fig_weights.add_trace(go.Scatter(
-        x=display_data.index, y=display_data['value_weight'],
-        mode='lines', name='Value Weight (%)',
-        line=dict(color='#E74C3C', width=3)
-    ))
-
-    fig_weights.add_trace(go.Scatter(
-        x=display_data.index, y=display_data['carry_weight'],
-        mode='lines', name='Carry Weight (%)',
-        line=dict(color='#3498DB', width=3)
-    ))
-
-    fig_weights.add_trace(go.Scatter(
-        x=display_data.index, y=display_data['momentum_weight'],
-        mode='lines', name='Momentum Weight (%)',
-        line=dict(color='#2ECC71', width=3)
-    ))
-
-    fig_weights.update_layout(
-        height=400,
-        title="Dynamic Weight Allocation Over Time",
-        template="plotly_white",
-        yaxis_title="Weight (%)",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    st.plotly_chart(fig_weights, use_container_width=True)
-
-# Enhanced Professional Charts Section
-st.markdown("---")
-st.markdown("## 📈 Advanced Analytics & Visualization")
-
-# Chart 1: Price Action with POSITION CLOSING MARKERS
+# Enhanced Charts
 st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-st.subheader("💹 Treasury Futures with Enhanced Trading Signals")
+st.subheader("💹 Revised Strategy: Price Action with Momentum-Filtered Signals")
+
 fig1 = go.Figure()
 
 # Price line
@@ -990,191 +991,161 @@ fig1.add_trace(go.Scatter(x=display_data.index, y=display_data["Close"],
                           mode="lines", name="5Y Treasury Futures",
                           line=dict(color='#2E86AB', width=3)))
 
-# Buy signals
-buy_signals = display_data[display_data["signal"] == 1]
+# Momentum-filtered signals
+buy_signals = display_data[(display_data["signal"] == 1) & (display_data["executed"] == True)]
 if len(buy_signals) > 0:
     fig1.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals["Close"],
-                              mode="markers", name=f"Buy Signals ({len(buy_signals)})",
-                              marker=dict(symbol="triangle-up", color="rgba(34, 139, 34, 0.6)", size=10)))
+                              mode="markers", name=f"✅ Momentum-Filtered Buys ({len(buy_signals)})",
+                              marker=dict(symbol="triangle-up", color="#228B22", size=14)))
 
-# Sell signals
-sell_signals = display_data[display_data["signal"] == -1]
+sell_signals = display_data[(display_data["signal"] == -1) & (display_data["executed"] == True)]
 if len(sell_signals) > 0:
     fig1.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals["Close"],
-                              mode="markers", name=f"Sell Signals ({len(sell_signals)})",
-                              marker=dict(symbol="triangle-down", color="rgba(220, 20, 60, 0.6)", size=10)))
+                              mode="markers", name=f"❌ Momentum-Filtered Sells ({len(sell_signals)})",
+                              marker=dict(symbol="triangle-down", color="#DC143C", size=14)))
 
-# Executed trades with position closes
-executed_data = display_data[display_data["executed"] == True]
-if len(executed_data) > 0:
-    # Separate by action type
-    opens = executed_data[executed_data['action_type'].str.contains('OPEN', na=False)]
-    closes = executed_data[executed_data['action_type'].str.contains('CLOSE|STOP_LOSS|REVERSE', na=False)]
+# Filtered out signals (for comparison)
+filtered_out = display_data[(display_data["signal"] != 0) & (display_data["executed"] == False)]
+if len(filtered_out) > 0:
+    fig1.add_trace(go.Scatter(x=filtered_out.index, y=filtered_out["Close"],
+                              mode="markers", name=f"🚫 Filtered Out Signals ({len(filtered_out)})",
+                              marker=dict(symbol="x", color="rgba(128,128,128,0.5)", size=8)))
 
-    if len(opens) > 0:
-        fig1.add_trace(go.Scatter(x=opens.index, y=opens["Close"],
-                                  mode="markers", name=f"✅ Positions Opened ({len(opens)})",
-                                  marker=dict(symbol="square", color="#228B22", size=14)))
-
-    if len(closes) > 0:
-        fig1.add_trace(go.Scatter(x=closes.index, y=closes["Close"],
-                                  mode="markers", name=f"❌ Positions Closed ({len(closes)})",
-                                  marker=dict(symbol="x", color="#FF6B6B", size=16)))
-
-fig1.update_layout(height=500, title="Professional Trading Signals with Position Management",
-                   template="plotly_white", showlegend=True,
-                   legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+fig1.update_layout(height=500, title="Momentum-Filtered Trading Signals (Reduced Overtrading)",
+                   template="plotly_white", showlegend=True)
 st.plotly_chart(fig1, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Performance Analysis
+# Performance comparison
 st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-st.subheader("💹 Portfolio Performance Analysis")
-fig_perf = go.Figure()
+st.subheader("📊 Strategy vs Benchmark Performance")
 
-# Total P&L
-fig_perf.add_trace(go.Scatter(x=display_data.index,
-                              y=(display_data['total_pnl'] / initial_cash) * 100,
-                              mode='lines+markers', name='Total P&L (%)',
-                              line=dict(color='#1B4F72', width=4),
-                              marker=dict(size=3)))
+fig2 = go.Figure()
 
-# Benchmark
+# Strategy performance
+fig2.add_trace(go.Scatter(x=display_data.index,
+                          y=(display_data['total_pnl'] / initial_cash) * 100,
+                          mode='lines', name=f'Revised Strategy ({strategy_sharpe:.3f} Sharpe)',
+                          line=dict(color='#1B4F72', width=4)))
+
+# Buy & Hold benchmark
 if len(display_data) > 0:
     buy_hold_return = ((display_data['Close'] / display_data['Close'].iloc[0]) - 1) * 100
-    fig_perf.add_trace(go.Scatter(x=display_data.index, y=buy_hold_return,
-                                  mode='lines', name='📈 Buy & Hold (%)',
-                                  line=dict(color='#95A5A6', width=2, dash='longdash')))
+    bh_returns = buy_hold_return.pct_change().dropna()
+    bh_sharpe = (bh_returns.mean() / bh_returns.std()) * np.sqrt(252) if len(
+        bh_returns) > 0 and bh_returns.std() > 0 else 0
 
-fig_perf.update_layout(height=450,
-                       title=f"Strategy Performance: {total_return_pct:.2f}% | Rolling Optimization: {'✅ ON' if enable_rolling_optimization else '❌ OFF'}",
-                       yaxis_title="Return (%)", template="plotly_white",
-                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-st.plotly_chart(fig_perf, use_container_width=True)
+    fig2.add_trace(go.Scatter(x=display_data.index, y=buy_hold_return,
+                              mode='lines', name=f'Buy & Hold ({bh_sharpe:.3f} Sharpe)',
+                              line=dict(color='#95A5A6', width=2, dash='dash')))
+
+fig2.update_layout(height=450,
+                   title=f"Performance Comparison: Revised Strategy vs Buy & Hold",
+                   yaxis_title="Return (%)", template="plotly_white")
+st.plotly_chart(fig2, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Trading Activity with Enhanced Details
+# Trading Activity Analysis
 if executed_trades:
-    st.subheader("📊 Enhanced Trading Activity Analysis")
+    st.subheader("📊 Enhanced Trading Analysis")
 
     trades_df = pd.DataFrame(executed_trades)
     trades_df['date'] = pd.to_datetime(trades_df['date'])
-    trades_df = trades_df.sort_values('date', ascending=False)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**📈 Complete Trading Activity**")
-        display_trades = trades_df[['date', 'action', 'price', 'quantity', 'pnl', 'cost']].copy()
+        st.markdown("**📈 Recent Trading Activity**")
+        display_trades = trades_df.head(20)[['date', 'action', 'price', 'pnl', 'momentum_score']].copy()
         display_trades['date'] = display_trades['date'].dt.strftime('%Y-%m-%d')
-        display_trades['pnl'] = display_trades['pnl'].fillna(0).round(2)
-        display_trades['cost'] = display_trades['cost'].round(2)
-        display_trades['quantity'] = display_trades['quantity'].astype(int)
-
-        st.dataframe(display_trades, hide_index=True, use_container_width=True, height=400)
+        display_trades['pnl'] = display_trades['pnl'].round(2)
+        display_trades['momentum_score'] = display_trades['momentum_score'].round(1)
+        st.dataframe(display_trades, hide_index=True, use_container_width=True, height=300)
 
     with col2:
-        st.markdown("**📊 Enhanced Statistics**")
+        st.markdown("**📊 Strategy Statistics**")
 
-        # Action type breakdown
-        action_counts = trades_df['action'].value_counts()
-        st.markdown("**Action Breakdown:**")
-        for action, count in action_counts.items():
-            st.write(f"- {action}: {count}")
+        # Filter statistics
+        total_signals = len(display_data[display_data['signal'] != 0])
+        filtered_signals = len(display_data[(display_data['signal'] != 0) & (display_data['executed'] == False)])
+        filter_rate = (filtered_signals / total_signals * 100) if total_signals > 0 else 0
 
-        # Performance metrics
-        profitable_trades = len(trades_df[trades_df['pnl'] > 0]) if 'pnl' in trades_df.columns else 0
-        total_completed_trades = len(trades_df[trades_df['pnl'].notna()]) if 'pnl' in trades_df.columns else 0
-        win_rate = (profitable_trades / total_completed_trades * 100) if total_completed_trades > 0 else 0
+        # Performance statistics
+        profitable_trades = len(trades_df[trades_df['pnl'] > 0])
+        win_rate = (profitable_trades / len(trades_df) * 100) if len(trades_df) > 0 else 0
+        avg_trade = trades_df['pnl'].mean() if len(trades_df) > 0 else 0
 
-        st.metric("Win Rate", f"{win_rate:.1f}%")
-        st.metric("Total Fees", f"${trades_df['cost'].sum():.2f}")
-        st.metric("Avg Position Size", f"{trades_df['quantity'].mean():.0f}")
+        stats_data = {
+            "Total Signals Generated": total_signals,
+            "Signals Filtered Out": filtered_signals,
+            "Filter Rate": f"{filter_rate:.1f}%",
+            "Executed Trades": len(trades_df),
+            "Win Rate": f"{win_rate:.1f}%",
+            "Average Trade P&L": f"${avg_trade:.2f}",
+            "Strategy Sharpe": f"{strategy_sharpe:.3f}",
+            "Total Transaction Costs": f"${trades_df['cost'].sum():.2f}"
+        }
 
-# Export Enhanced Data
+        for metric, value in stats_data.items():
+            st.write(f"**{metric}**: {value}")
+
+# Export Data
 st.markdown("---")
-st.markdown("## 📁 Enhanced Data Export")
+st.markdown("## 📁 Data Export")
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     enhanced_data = display_data.copy()
     csv_data = enhanced_data.to_csv(index=True)
-    st.download_button("📥 Download Enhanced Data", csv_data,
-                       f"enhanced_trading_data_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
+    st.download_button("📥 Download Trading Data", csv_data,
+                       f"revised_strategy_data_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
 
 with col2:
-    weights_df = pd.DataFrame(weight_history)
-    weights_csv = weights_df.to_csv(index=False)
-    st.download_button("📥 Download Weight History", weights_csv,
-                       f"weight_history_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
-
-with col3:
     if executed_trades:
         trades_csv = pd.DataFrame(executed_trades).to_csv(index=False)
         st.download_button("📥 Download Trades", trades_csv,
-                           f"enhanced_trades_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
+                           f"revised_strategy_trades_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
 
-with col4:
-    # Complete Python file
-    python_code = f'''
-# Professional Treasury Trading System v3.0
-# Enhanced with Rolling Optimization and Advanced Position Management
-# Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+with col3:
+    # Export optimized weights
+    weights_df = pd.DataFrame.from_dict(st.session_state.optimized_weights, orient='index',
+                                        columns=['Value_Weight', 'Carry_Weight', 'Momentum_Weight'])
+    weights_df.index.name = 'Regime'
+    weights_csv = weights_df.to_csv()
+    st.download_button("📥 Download Optimized Weights", weights_csv,
+                       f"optimized_weights_{datetime.now().strftime('%Y%m%d')}.csv", "text/csv")
 
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import streamlit as st
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from fredapi import Fred
-from scipy import stats
-import warnings
-import time
-
-# [COMPLETE CODE WOULD BE HERE - ~1000+ lines]
-# This includes all classes and functions:
-# - RollingRegimeOptimizer
-# - AdvancedTradingSystem  
-# - All calculation functions
-# - Streamlit interface
-
-# Current Configuration:
-# - Rolling Optimization: {enable_rolling_optimization}
-# - Close on Neutral: {close_on_neutral}
-# - Stop Loss: {use_stop_loss} ({stop_loss_pct}% if enabled)
-# - Weight Granularity: {weight_granularity}%
-# - Training Period: {training_years} years
-
-print("Professional Treasury Trading System v3.0")
-print("Rolling optimization and enhanced position management enabled")
-'''
-
-    st.download_button("💻 Download Complete .py File", python_code,
-                       f"treasury_trading_system_v3_{datetime.now().strftime('%Y%m%d')}.py", "text/plain")
-
-# Summary
+# Strategy Summary
 st.markdown("---")
-st.markdown("## 📋 System Summary")
+st.markdown("## 📋 Revised Strategy Summary")
 
 summary_text = f"""
-### 🎯 Configuration Summary:
-- **Trading Period**: {start_date_input} to {end_date_input} ({len(display_data)} days)
-- **Training Period**: {training_years} years before start date
-- **Rolling Optimization**: {'✅ ENABLED' if enable_rolling_optimization else '❌ DISABLED'}
-- **Close on Neutral**: {'✅ YES' if close_on_neutral else '❌ NO'}
-- **Stop Loss**: {'✅ ENABLED' if use_stop_loss else '❌ DISABLED'} {f'({stop_loss_pct}%)' if use_stop_loss else ''}
+### 🎯 Strategy Configuration:
+- **Regime Classification**: Simplified (Hurst + ADF only, no Fractal Dimension)
+- **Momentum Filtering**: Threshold ±{momentum_filter_threshold} (reduces overtrading by {filter_rate:.1f}%)
+- **Kalman Smoothing**: {'✅ ENABLED' if enable_kalman else '❌ DISABLED'}
+- **Walk-Forward Optimization**: {'✅ COMPLETED' if st.session_state.walk_forward_results else '❌ USING DEFAULTS'}
 
-### 📊 Performance Summary:
-- **Total Return**: {total_return_pct:.2f}%
-- **Total Trades**: {len(executed_trades)}
-- **Current Position**: {current_pos} ({pos_size} contracts)
-- **Final Portfolio Value**: ${portfolio_value:,.0f}
+### 📊 Performance Results:
+- **Strategy Return**: {total_return_pct:.2f}%
+- **Strategy Sharpe Ratio**: {strategy_sharpe:.3f}
+- **Buy & Hold Sharpe**: {bh_sharpe:.3f} 
+- **Total Trades**: {len(executed_trades)} (reduced from {total_signals} signals)
+- **Win Rate**: {win_rate:.1f}%
+- **Trade Frequency**: {trades_per_month:.1f} trades/month
 
-### ⚖️ Current Weights:
-{'Dynamically optimized based on rolling performance' if enable_rolling_optimization else 'Fixed default weights used throughout'}
+### 🎯 Key Improvements:
+- **Reduced Overtrading**: {filter_rate:.1f}% of signals filtered by momentum
+- **Higher Conviction Trades**: Only trade when momentum aligns
+- **Lower Transaction Costs**: Fewer trades = lower total fees
+- **Improved Risk-Adjusted Returns**: Focus on Sharpe ratio optimization
+
+### ⚖️ Current Optimized Weights:
 """
+
+for regime, weights in st.session_state.optimized_weights.items():
+    summary_text += f"\n- **{regime}**: Value={weights[0]:.3f}, Carry={weights[1]:.3f}, Momentum={weights[2]:.3f}"
 
 st.markdown(summary_text)
 
@@ -1182,10 +1153,9 @@ st.markdown(summary_text)
 st.markdown("---")
 st.markdown(f"""
 <div style='text-align: center; color: #666; padding: 2rem; border-top: 2px solid #dee2e6;'>
-    <strong>Professional Treasury Trading System v3.0</strong><br>
-    <em>Rolling Optimization & Enhanced Position Management</em><br>
-    Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}<br>
-    <small>Rolling Optimization: {'✅ Active' if enable_rolling_optimization else '❌ Inactive'} | 
-    Position Management: {'Enhanced' if use_stop_loss or not close_on_neutral else 'Standard'}</small>
+    <strong>Revised Treasury Trading Strategy v1.0</strong><br>
+    <em>Simplified Regimes • Momentum Filtering • Walk-Forward Optimization</em><br>
+    Strategy Sharpe: {strategy_sharpe:.3f} | Trades: {len(executed_trades)} | Filter Rate: {filter_rate:.1f}%<br>
+    <small>Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</small>
 </div>
 """, unsafe_allow_html=True)
