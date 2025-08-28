@@ -93,8 +93,8 @@ def build_indicators_yields(data,lookback):
     data["spread_oat"] = data["FR_10y"] - data["FR_3y"]
     data["spread_oat_bund"] = data["FR_10y"] - data["DE_10y"]
     data["spread_oat_normalized"] = data["spread_oat"] / data["spread_oat"].rolling(250).std()
-    data["z_spread_oat_normalized"] = zscore(data["spread_oat_normalized"],lookback)
-
+    data["z_spread_oat_normalized_3m"] = zscore(data["spread_oat_normalized_3m"],lookback)
+    data["z_spread_oat_normalized_6m"] = zscore(data["spread_oat_normalized_3m"],lookback*2)
     data["spread_bund"] = data["DE_10y"] - data["DE_3y"]
     data["spread_bund_normalized"] = data["spread_bund"] / data["spread_bund"].rolling(250).std()
     data["z_spread_bund_normalized"] = zscore(data["spread_bund_normalized"], lookback)
@@ -346,9 +346,15 @@ if __name__ == "__main__":
             # Always show the spread
             spreads_fig.add_trace(go.Scatter(
                 x=filtered_yields_df.index,
-                y=filtered_yields_df.spread_oat_bund_z,
-                name="Spread Z-OAT_Bund",
+                y=filtered_yields_df.spread_oat_bund_z_3m,
+                name="Spread Z-OAT_Bund 3m",
                 line=dict(color='lightblue', width=2)
+            ))
+            spreads_fig.add_trace(go.Scatter(
+                x=filtered_yields_df.index,
+                y=filtered_yields_df.spread_oat_bund_z_6m,
+                name="Spread Z-OAT_Bund 6m",
+                line=dict(color='blue', width=2)
             ))
 
             # Conditionally add individual yields based on checkboxes
