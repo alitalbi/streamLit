@@ -91,11 +91,12 @@ def build_indicators(data):
 
 def build_indicators_yields(data,lookback):
     data["spread_oat"] = data["FR_10y"] - data["FR_3y"]
-    data["spread_oat_normalized"] = data["spread_oat"] / data["spread_oat"].rolling(lookback).std()
+    data["spread_oat_bund"] = data["FR_10y"] - data["DE_10y"]
+    data["spread_oat_normalized"] = data["spread_oat"] / data["spread_oat"].rolling(250).std()
     data["z_spread_oat_normalized"] = zscore(data["spread_oat_normalized"],lookback)
 
     data["spread_bund"] = data["DE_10y"] - data["DE_3y"]
-    data["spread_bund_normalized"] = data["spread_bund"] / data["spread_bund"].rolling(lookback).std()
+    data["spread_bund_normalized"] = data["spread_bund"] / data["spread_bund"].rolling(250).std()
     data["z_spread_bund_normalized"] = zscore(data["spread_bund_normalized"], lookback)
 
     data["spread_oat_bund_z"] = data["z_spread_oat_normalized"] - data["z_spread_bund_normalized"]
@@ -336,10 +337,8 @@ if __name__ == "__main__":
 
         with graph_cols[1]:
             st.write("**Add to chart:**")
-            show_fr_3y = st.checkbox("OAT 3y", key="fr_3y_final")
-            show_fr_10y = st.checkbox("OAT 10y", key="fr_10y_final")
-            show_de_3y = st.checkbox("DE 3y", key="de_3y_final")
-            show_de_10y = st.checkbox("DE 10y", key="de_10y_final")
+            show_spread = st.checkbox("Spread OAT Bund", key="fr_3y_final")
+            
 
         with graph_cols[0]:
             spreads_fig = go.Figure()
@@ -353,41 +352,15 @@ if __name__ == "__main__":
             ))
 
             # Conditionally add individual yields based on checkboxes
-            if show_fr_3y:
+            if show_spread:
                 spreads_fig.add_trace(go.Scatter(
                     x=filtered_yields_df.index,
-                    y=filtered_yields_df.FR_3y,
-                    name="OAT 3y",
+                    y=filtered_yields_df.spread_oat_bund,
+                    name="OAT Bund",
                     yaxis="y2",
                     line=dict(color='blue', dash='dot')
                 ))
 
-            if show_fr_10y:
-                spreads_fig.add_trace(go.Scatter(
-                    x=filtered_yields_df.index,
-                    y=filtered_yields_df.FR_10y,
-                    name="OAT 10y",
-                    yaxis="y2",
-                    line=dict(color='darkblue', dash='dot')
-                ))
-
-            if show_de_3y:
-                spreads_fig.add_trace(go.Scatter(
-                    x=filtered_yields_df.index,
-                    y=filtered_yields_df.DE_3y,
-                    name="DE 3y",
-                    yaxis="y2",
-                    line=dict(color='red', dash='dot')
-                ))
-
-            if show_de_10y:
-                spreads_fig.add_trace(go.Scatter(
-                    x=filtered_yields_df.index,
-                    y=filtered_yields_df.DE_10y,
-                    name="DE 10y",
-                    yaxis="y2",
-                    line=dict(color='darkred', dash='dot')
-                ))
 
             # Update layout to have dual y-axes
             spreads_fig.update_layout(
