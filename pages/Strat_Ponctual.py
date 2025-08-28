@@ -366,7 +366,7 @@ if __name__ == "__main__":
                     y=filtered_yields_df.spread_oat_bund,
                     name="OAT Bund",
                     yaxis="y2",
-                    line=dict(color='blue', dash='dot')
+                    line=dict(color='beige', dash='dot')
                 ))
 
 
