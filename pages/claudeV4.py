@@ -134,39 +134,43 @@ def backtest_strategy(data, weights, buy_zone, sell_zone, use_stop_loss, stop_lo
 
         # Trading signals
         if signal != 0 and signal != position:
-            # Close existing position
-            if position != 0:
-                pnl = (current_price - entry_price) * position_size
-                total_pnl += pnl
-                cash += pnl
-                cash -= abs(pnl) * (transaction_cost_bps / 10000)
+            # Check if we can execute next day (not at end of data)
+            if i < len(data_copy) - 1:
+                next_day_price = data_copy.iloc[i + 1]['Open']  # Use next day's open price
 
-                return_pct = ((current_price - entry_price) / entry_price) * position * 100
+                # Close existing position
+                if position != 0:
+                    pnl = (next_day_price - entry_price) * position_size  # FIXED: Use next_day_price
+                    total_pnl += pnl
+                    cash += pnl
+                    cash -= abs(pnl) * (transaction_cost_bps / 10000)
 
-                trades.append({
-                    'entry_date': entry_date,
-                    'exit_date': idx,
-                    'entry_price': entry_price,
-                    'exit_price': current_price,
-                    'position': 'LONG' if position > 0 else 'SHORT',
-                    'pnl': pnl,
-                    'return_pct': return_pct,
-                    'exit_reason': 'SIGNAL'
-                })
+                    return_pct = ((
+                                              next_day_price - entry_price) / entry_price) * position * 100  # FIXED: Use next_day_price
 
-                executed_trades.append(idx)
-                data_copy.loc[idx, 'Executed'] = True
+                    trades.append({
+                        'entry_date': entry_date,
+                        'exit_date': data_copy.index[i + 1],
+                        'entry_price': entry_price,
+                        'exit_price': next_day_price,
+                        'position': 'LONG' if position > 0 else 'SHORT',
+                        'pnl': pnl,
+                        'return_pct': return_pct,
+                        'exit_reason': 'SIGNAL'
+                    })
 
-            # Open new position
-            position = signal
-            allocated_capital = cash * (capital_allocation_pct / 100)
-            position_size = allocated_capital / current_price * position
-            entry_price = current_price
-            entry_date = idx
-            cash -= abs(allocated_capital) * (transaction_cost_bps / 10000)
+                    executed_trades.append(data_copy.index[i + 1])
 
-            executed_trades.append(idx)
-            data_copy.loc[idx, 'Executed'] = True
+                # Open new position
+                position = signal
+                allocated_capital = cash * (capital_allocation_pct / 100)
+                position_size = allocated_capital / next_day_price * position  # FIXED: Use next_day_price
+                entry_price = next_day_price
+                entry_date = data_copy.index[i + 1]
+                cash -= abs(allocated_capital) * (transaction_cost_bps / 10000)
+
+                executed_trades.append(data_copy.index[i + 1])
+                data_copy.loc[data_copy.index[i + 1], 'Executed'] = True
 
         # Track equity
         if position != 0:
@@ -383,7 +387,6 @@ if 'best_weights' in st.session_state:
 
     with col2:
         st.markdown("### 🧪 TEST Period Performance")
-
         st.metric("P&L", f"${test_results['total_pnl']:,.0f}", f"{test_results['total_return_pct']:+.1f}%")
         st.metric("Max Drawdown", f"{test_results['max_drawdown']:.1f}%")
         st.metric("Trades", f"{test_results['num_trades']}", f"Win Rate: {test_results['win_rate']:.1f}%")
