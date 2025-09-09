@@ -741,7 +741,8 @@ if 'regime_weights' in st.session_state:
             "Composite Regime Score"
         ),
         vertical_spacing=0.08,
-        row_heights=[0.5, 0.25, 0.25]
+        row_heights=[0.5, 0.25, 0.25],
+        shared_xaxes=True
     )
 
     # Price chart with regime background
