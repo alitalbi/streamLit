@@ -439,7 +439,6 @@ with col3:
 with col4:
     initial_capital = st.number_input("Capital ($)", 10000, 1000000, 100000, step=10000)
     zscore_lookback = st.number_input("Z-Score Lookback", value=63, min_value=20, max_value=252)
-    show_5y_yield = st.checkbox("Show 5Y Yield on Charts")
     min_regime_days = st.number_input("Min Regime Days", value=30, min_value=10, max_value=100,
                                       help="Minimum days required to optimize regime weights")
 
@@ -649,8 +648,7 @@ if st.button("🚀 Run Regime-Aware Optimization", type="primary"):
         'train_regime': train_regime,
         'test_regime': test_regime,
         'regime_indicators': regime_indicators,
-        'final_data': final_data,
-        'show_5y_yield': show_5y_yield
+        'final_data': final_data
     })
 
 # Display Results
@@ -664,7 +662,6 @@ if 'regime_weights' in st.session_state:
     test_regime = st.session_state.test_regime
     regime_indicators = st.session_state.regime_indicators
     final_data = st.session_state.final_data
-    show_5y_yield = st.session_state.show_5y_yield
 
     # Results Header
     st.markdown("---")
@@ -742,7 +739,8 @@ if 'regime_weights' in st.session_state:
         ),
         vertical_spacing=0.08,
         row_heights=[0.5, 0.25, 0.25],
-        shared_xaxes=True
+        shared_xaxes=True,
+        shared_yaxes=False
     )
 
     # Price chart with regime background
@@ -757,19 +755,6 @@ if 'regime_weights' in st.session_state:
         row=1, col=1
     )
 
-    # Optional 5Y yield overlay
-    if show_5y_yield and '5y_yield' in selected_data.columns:
-        fig_main.add_trace(
-            go.Scatter(
-                x=selected_data.index,
-                y=selected_data['5y_yield'],
-                mode='lines',
-                name='5Y Yield',
-                line=dict(color='blue', width=1, dash='dot'),
-                yaxis='y2'
-            ),
-            row=1, col=1
-        )
 
     # Add regime background (sample every 5th point for speed)
     regime_sample = selected_regime['regime'][::5]
@@ -861,12 +846,66 @@ if 'regime_weights' in st.session_state:
             x=data_with_signals.index,
             y=data_with_signals['Agg_Percentile'],
             mode='lines',
-            name='Agg Percentile',
-            line=dict(color='purple', width=2)
+            name='Dynamic Agg Percentile',
+            line=dict(color='purple', width=2),
+            yaxis="y1"
         ),
         row=2, col=1
     )
 
+    # Fixed regime weight comparisons
+    st.markdown("**Compare vs Fixed Regime Weights:**")
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        show_trending_fixed = st.checkbox("Show Trending Agg%", key="trending_fixed")
+    with col2:
+        show_ranging_fixed = st.checkbox("Show Ranging Agg%", key="ranging_fixed")
+    with col3:
+        show_unknown_fixed = st.checkbox("Show Unknown Agg%", key="unknown_fixed")
+
+    # Calculate and display fixed weight aggregate percentiles
+    if show_trending_fixed and 1 in regime_weights:
+        trending_agg = calculate_agg_percentile(selected_data, regime_weights[1])
+        fig_main.add_trace(
+            go.Scatter(
+                x=selected_data.index,
+                y=trending_agg,
+                mode='lines',
+                name=f'Trending Fixed ({regime_weights[1][0]}/{regime_weights[1][1]}/{regime_weights[1][2]})',
+                line=dict(color='lightblue', width=4, dash='dash'),
+                opacity=0.7
+            ),
+            row=2, col=1
+        )
+
+    if show_ranging_fixed and -1 in regime_weights:
+        ranging_agg = calculate_agg_percentile(selected_data, regime_weights[-1])
+        fig_main.add_trace(
+            go.Scatter(
+                x=selected_data.index,
+                y=ranging_agg,
+                mode='lines',
+                name=f'Ranging Fixed ({regime_weights[-1][0]}/{regime_weights[-1][1]}/{regime_weights[-1][2]})',
+                line=dict(color='orange', width=4, dash='dot'),
+                opacity=0.7
+            ),
+            row=2, col=1
+        )
+
+    if show_unknown_fixed and 0 in regime_weights:
+        unknown_agg = calculate_agg_percentile(selected_data, regime_weights[0])
+        fig_main.add_trace(
+            go.Scatter(
+                x=selected_data.index,
+                y=unknown_agg,
+                mode='lines',
+                name=f'Unknown Fixed ({regime_weights[0][0]}/{regime_weights[0][1]}/{regime_weights[0][2]})',
+                line=dict(color='gray', width=4, dash='dash'),
+                opacity=0.7
+            ),
+            row=2, col=1
+        )
     # Buy/sell zones
     fig_main.add_hrect(y0=buy_zone[0], y1=buy_zone[1],
                        fillcolor="green", opacity=0.2,
@@ -908,6 +947,7 @@ if 'regime_weights' in st.session_state:
     fig_main.update_yaxes(title_text="Percentile", row=2, col=1)
     fig_main.update_yaxes(title_text="Score", row=3, col=1)
     fig_main.update_xaxes(title_text="Date", row=3, col=1)
+
 
     st.plotly_chart(fig_main, use_container_width=True)
 
