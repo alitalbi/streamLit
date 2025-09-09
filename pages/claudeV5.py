@@ -216,7 +216,7 @@ if 'data' in st.session_state:
     )
 
     # Regime background (simplified - sample every 10th point for speed)
-    regime_sample = regime[::5]  # Sample every 5th point for speed
+    regime_sample = regime  # Sample every 5th point for speed
     for i in range(len(regime_sample) - 1):
         if regime_sample.iloc[i] == 1:  # Trending
             fig.add_vrect(
